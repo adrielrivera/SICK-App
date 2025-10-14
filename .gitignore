@@ -44,6 +44,9 @@ instance/
 .env
 .env.local
 
+# Authentication config (if enabled)
+config_auth_enabled.py
+
 # Logs
 *.log
 logs/

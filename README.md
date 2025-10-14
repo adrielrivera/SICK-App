@@ -242,6 +242,15 @@ Capstone Project - SICK Team
 - SICK Capstone Team
 - Adriel Rivera
 
+## Deployment
+
+See deployment guides:
+- **`DEPLOYMENT_SUMMARY.md`** - Overview of deployment options (start here!)
+- **`DEPLOYMENT.md`** - Complete deployment guide with all methods
+- **`DEPLOY_QUICK.md`** - Quick reference card
+
+**TL;DR:** Since your app needs Arduino access, it must run on the Raspberry Pi. Use **ngrok** for easy public access during demos!
+
 ## Acknowledgments
 
 - Arduino community for signal simulation examples
