@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SICK - PBT Sensor Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SICK Capstone Project</h1>
+            <h2>PBT Sensor - Live Waveform Monitor</h2>
+        </header>
+
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-label">Baseline</div>
+                <div class="stat-value" id="baseline-value">--</div>
+                <div class="stat-unit">ADC counts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Current Envelope</div>
+                <div class="stat-value" id="envelope-value">--</div>
+                <div class="stat-unit">ADC counts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Threshold</div>
+                <div class="stat-value" id="threshold-value">60</div>
+                <div class="stat-unit">ADC counts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Connection</div>
+                <div class="stat-value" id="connection-status">
+                    <span class="status-indicator" id="status-dot"></span>
+                    <span id="status-text">Connecting...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Real-time Waveform</h3>
+                <div class="chart-controls">
+                    <button id="pause-btn" class="control-btn">Pause</button>
+                    <button id="clear-btn" class="control-btn">Clear</button>
+                </div>
+            </div>
+            <canvas id="waveformChart"></canvas>
+        </div>
+
+        <div class="info-panel">
+            <h3>System Information</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Sample Rate:</span>
+                    <span class="info-value">800 Hz</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Samples Received:</span>
+                    <span class="info-value" id="sample-count">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Buffer Size:</span>
+                    <span class="info-value" id="buffer-size">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Update Rate:</span>
+                    <span class="info-value">20 Hz</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
+
