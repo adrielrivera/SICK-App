@@ -1,0 +1,256 @@
+================================================================================
+                    ARCADE INTERFACE TIMING DIAGRAM
+================================================================================
+
+Pin Configuration:
+  Pin 6 (GPIO 6): Active HIGH signal (normally LOW) - Press START
+  Pin 5 (GPIO 5): Active LOW signal (normally HIGH) - Press ACTIVE
+
+================================================================================
+                          COMPLETE BUTTON PRESS CYCLE
+================================================================================
+
+Time    Pin 6       Pin 5       State
+(ms)    (GPIO6)     (GPIO5)     Description
+────────────────────────────────────────────────────────────────────────────
+  0     LOW         HIGH        IDLE - No button press
+        ││          ││
+        ││          ││
+        ││          ││          [Impact Detected!]
+        ││          ││          Peak captured: e.g., 450 ADC
+        ││          ││          Mapped to pulse: e.g., 600ms (inverted)
+        ││          ││
+  1     HIGH ─┐     HIGH        Pin 6 rises - PRESS START SIGNAL
+        ││    │     ││
+  2     HIGH  │     HIGH        [2ms propagation delay]
+        ││    │     ││
+  3     HIGH  │     LOW ──┐     Pin 5 falls - PRESS ACTIVE CONFIRMED
+        ││    │     ││    │
+  4     HIGH  │     LOW   │     [Button held down]
+        ││    │     ││    │
+        ⋮     ⋮     ⋮     ⋮     ...holding for pulse duration...
+        ││    │     ││    │
+ 603    HIGH  │     LOW   │     [Still held - 600ms total]
+        ││    │     ││    │
+ 604    HIGH  │     HIGH ─┘     Pin 5 rises - RELEASE SIGNAL
+        ││    │     ││
+ 605    HIGH  │     HIGH        [2ms propagation delay]
+        ││    │     ││
+ 606    LOW ──┘     HIGH        Pin 6 falls - PRESS END SIGNAL
+        ││          ││
+ 607+   LOW         HIGH        IDLE - Ready for next press
+        ││          ││
+
+Total Duration: 606ms (4ms overhead + 600ms mapped pulse + 2ms cleanup)
+
+================================================================================
+                         DETAILED PIN STATE DIAGRAM
+================================================================================
+
+Pin 6 (Active HIGH):
+     Idle        Start      Held        End         Idle
+      │            │         │           │           │
+  ────┘            └─────────────────────┘           └────
+  0ms          1-3ms                   604-606ms       607+ms
+      LOW          HIGH                    LOW
+
+Pin 5 (Active LOW):
+     Idle        Active              Release        Idle
+      │            │                    │            │
+  ────────────╲    │                    ╱────────────
+              │    │                  │
+  ────────────┘────────────────────────└────────────
+  0-2ms       3ms                 604ms          605+ms
+      HIGH              LOW                HIGH
+
+Pulse Width Measurement:
+  ◄──────────────────────────────────────►
+  Pin 5 fall          to          Pin 5 rise
+  (3ms)                          (604ms)
+  = 601ms actual button press duration
+
+================================================================================
+                        MULTIPLE CONSECUTIVE HITS
+================================================================================
+
+Hit 1 (Strong - 150ms)    Hit 2 (Weak - 900ms)
+         ▼                          ▼
+Pin 6:
+  ___╱‾‾╲___________________╱‾‾‾‾‾╲___
+     ↑ ↑                    ↑     ↑
+   Start End              Start   End
+
+Pin 5:
+  ‾‾‾‾╲╱‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾╲_____╱‾‾‾
+      ↑ ↑                  ↑     ↑
+    Press Release        Press  Release
+    
+  ←150ms→              ←──900ms──→
+  (Strong hit)         (Weak hit)
+
+  [200ms refractory period between hits prevents overlap]
+
+================================================================================
+                    VOLTAGE LEVELS (Raspberry Pi 3.3V)
+================================================================================
+
+Pin 6 (Active HIGH):
+    3.3V ┬─────────────────────────┐
+         │                         │
+         │         PRESSED         │
+         │                         │
+    0V   └─────┐           ┌───────┴─────
+               │   IDLE    │
+               └───────────┘
+
+Pin 5 (Active LOW):
+    3.3V ┬─────┐           ┌───────┬─────
+         │     │   IDLE    │       │
+         │     │           │       │
+         │     │  PRESSED  │       │
+    0V   └─────┴───────────┴───────┘
+
+WARNING: If arcade board uses 5V logic, use level shifters!
+
+================================================================================
+                          TIMING SPECIFICATIONS
+================================================================================
+
+Parameter                   Value       Notes
+────────────────────────────────────────────────────────────────────────────
+Press Start Delay           2ms         Pin 6 → Pin 5 delay
+Release End Delay           2ms         Pin 5 → Pin 6 delay
+Minimum Pulse Width         60ms        Strong hit (A_MAX = 700)
+Maximum Pulse Width         1500ms      Weak hit (A_MIN = 80)
+Typical Pulse Width         500-800ms   Normal gameplay range
+Refractory Period           200ms       Between consecutive hits
+Detection Latency           50-100ms    From impact to signal
+Sample Rate                 800Hz       PBT sensor sampling
+
+Total Overhead per Hit:     ~4ms        (2ms + 2ms)
+Actual Button Duration:     56-1496ms   (accounting for overhead)
+
+================================================================================
+                           INVERTED MAPPING CURVE
+================================================================================
+
+PBT Peak Amplitude (ADC counts)
+    │
+700 │ ●─────────────────────────────────┐  Peak = 700 → 60ms
+600 │   ●                               │
+500 │     ●                             │
+400 │       ●──────── Midpoint          │  Peak = 400 → 780ms
+300 │         ●                         │
+200 │           ●                       │
+100 │             ●                     │
+ 80 │               ●───────────────────┘  Peak = 80 → 1500ms
+    └───────────────────────────────────
+    60ms        780ms           1500ms
+              Pulse Width (milliseconds)
+
+Formula: width_ms = W_MAX - ((peak - A_MIN) / (A_MAX - A_MIN)) * (W_MAX - W_MIN)
+
+================================================================================
+                          EDGE DETECTION DIAGRAM
+================================================================================
+
+Some arcade boards detect button events on edges rather than levels:
+
+Pin 6 Rising Edge → Button Press START Event
+Pin 5 Falling Edge → Button Press CONFIRM Event
+Pin 5 Rising Edge → Button Release Event
+Pin 6 Falling Edge → Button Press END Event
+
+Edge Detection:
+    Pin 6:  ↗ = START     ↘ = END
+    Pin 5:  ↘ = CONFIRM   ↗ = RELEASE
+
+This allows arcade board to:
+1. Know exactly when press starts (Pin 6 ↗)
+2. Confirm press is real (Pin 5 ↘)
+3. Measure exact duration (Pin 5 ↘ to Pin 5 ↗)
+4. Know when press ends (Pin 6 ↘)
+
+================================================================================
+                           OSCILLOSCOPE VIEW
+================================================================================
+
+Ch1 (Pin 6 - Yellow):
+      ┌─────────────────┐
+  ────┘                 └────
+
+Ch2 (Pin 5 - Blue):
+  ────┐                 ┌────
+      └─────────────────┘
+
+Measurements:
+  ΔT1: Pin 6 rise to Pin 5 fall = 2ms
+  ΔT2: Pin 5 fall to Pin 5 rise = Pulse duration
+  ΔT3: Pin 5 rise to Pin 6 fall = 2ms
+
+================================================================================
+                         LED TESTING SETUP
+================================================================================
+
+For Visual Verification:
+
+Pin 6 Test:
+  GPIO 6 ───┬─── LED (+) ─── 220Ω ─── GND
+            │
+  (LED ON = Press Start)
+
+Pin 5 Test:
+  3.3V ───── 220Ω ─── LED (-) ─── GPIO 5
+                                     │
+  (LED OFF = Press Active)
+
+Expected Behavior when tapping sensor:
+  1. Pin 6 LED turns ON (press start)
+  2. Pin 5 LED turns OFF (press active)
+  3. Wait for pulse duration
+  4. Pin 5 LED turns ON (release)
+  5. Pin 6 LED turns OFF (press end)
+
+================================================================================
+                          ERROR CONDITIONS
+================================================================================
+
+Invalid State 1: Both pins LOW
+  Pin 6: LOW    Pin 5: LOW
+  → Should NEVER occur
+  → Indicates wiring error or software bug
+
+Invalid State 2: Pulse too short (<10ms)
+  → Mapping error or A_MAX set wrong
+  → Check peak amplitude values
+
+Invalid State 3: Overlapping pulses
+  Pin 6 goes HIGH before previous sequence ends
+  → Refractory period too short
+  → Increase REFRACTORY_MS (default 200ms)
+
+Invalid State 4: Pulse stuck HIGH/LOW
+  Pin stays in active state indefinitely
+  → Software crash or exception during pulse
+  → Check console for errors
+  → System should auto-reset on restart
+
+================================================================================
+                            SUMMARY
+================================================================================
+
+✓ Pin 6: Signals press boundaries (start/end)
+✓ Pin 5: Signals press state (active/release)
+✓ Inverted mapping: Strong hit = short pulse
+✓ Total overhead: 4ms per button press
+✓ Refractory period: 200ms between hits
+✓ Range: 60-1500ms mapped pulse width
+
+The dual-pin protocol provides:
+  → Precise timing information
+  → Redundant press confirmation
+  → Compatibility with edge-triggered arcade inputs
+  → Clear start/end signals
+
+================================================================================
+

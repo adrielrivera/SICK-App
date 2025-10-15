@@ -29,7 +29,9 @@ serial_running = False
 
 # GPIO connection
 pi = None
-GPIO_PULSE = 18
+# Arcade interface pins
+GPIO_PIN6 = 6  # Active HIGH (normally LOW) - Press START signal
+GPIO_PIN5 = 5  # Active LOW (normally HIGH) - Press ACTIVE signal
 
 # Statistics
 baseline = 0.0
@@ -65,14 +67,44 @@ def map_linear(x, x0, x1, y0, y1):
     return y0 + t * (y1 - y0)
 
 
-def build_pulse_wave(pi, gpio, width_ms):
-    """Build a pulse waveform for pigpio."""
-    pi.write(gpio, 0)
-    pi.wave_clear()
-    up = pigpio.pulse(gpio_on=1<<gpio, gpio_off=0, delay=int(width_ms*1000))
-    dn = pigpio.pulse(gpio_on=0, gpio_off=1<<gpio, delay=1)
-    pi.wave_add_generic([up, dn])
-    return pi.wave_create()
+def map_linear_inverse(x, x0, x1, y0, y1):
+    """Map value from one range to another INVERSELY (high x → low y)."""
+    if x1 <= x0:
+        return y1
+    t = (x - x0) / (x1 - x0)
+    return y1 - t * (y1 - y0)  # Inverted: subtract instead of add
+
+
+def arcade_button_press(pi, pin5, pin6, duration_ms):
+    """
+    Simulate arcade button press with dual-pin protocol.
+    
+    Pin 6: Active HIGH (normally LOW) - signals press start/end
+    Pin 5: Active LOW (normally HIGH) - signals press active
+    
+    Sequence:
+    1. Pin 6 goes HIGH (press start)
+    2. Pin 5 goes LOW (press confirmed)
+    3. Hold for duration_ms
+    4. Pin 5 goes HIGH (release)
+    5. Pin 6 goes LOW (press end)
+    """
+    # Step 1: Pin 6 HIGH (press start signal)
+    pi.write(pin6, 1)
+    time.sleep(0.002)  # 2ms delay for signal propagation
+    
+    # Step 2: Pin 5 LOW (press active)
+    pi.write(pin5, 0)
+    
+    # Step 3: Hold for the mapped duration
+    time.sleep(duration_ms / 1000.0)
+    
+    # Step 4: Pin 5 HIGH (release signal)
+    pi.write(pin5, 1)
+    time.sleep(0.002)  # 2ms delay
+    
+    # Step 5: Pin 6 LOW (press end)
+    pi.write(pin6, 0)
 
 
 def read_one_int(ser):
@@ -101,9 +133,17 @@ def serial_reader_thread():
         print("Run: sudo systemctl start pigpiod", file=sys.stderr)
         pi = None
     else:
-        pi.set_mode(GPIO_PULSE, pigpio.OUTPUT)
-        pi.write(GPIO_PULSE, 0)
-        print(f"GPIO {GPIO_PULSE} initialized for pulse output")
+        # Initialize arcade interface pins
+        pi.set_mode(GPIO_PIN6, pigpio.OUTPUT)
+        pi.set_mode(GPIO_PIN5, pigpio.OUTPUT)
+        
+        # Set default states
+        pi.write(GPIO_PIN6, 0)  # Pin 6 normally LOW
+        pi.write(GPIO_PIN5, 1)  # Pin 5 normally HIGH
+        
+        print(f"GPIO Pins initialized for arcade interface:")
+        print(f"  Pin 6 (BCM {GPIO_PIN6}): Active HIGH - Press START (default: LOW)")
+        print(f"  Pin 5 (BCM {GPIO_PIN5}): Active LOW - Press ACTIVE (default: HIGH)")
     
     print("Initializing serial connection...")
     try:
@@ -181,27 +221,20 @@ def serial_reader_thread():
                 
                 # Check if capture window ended or envelope dropped
                 if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
-                    # Map amplitude to pulse width and fire pulse
+                    # Map amplitude to pulse width INVERSELY
+                    # High peak → Short pulse (strong hit = quick button press)
+                    # Low peak → Long pulse (weak hit = slow button press)
                     a_clamped = clamp(peak, A_MIN, A_MAX)
                     width_ms = clamp(
-                        map_linear(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
+                        map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
                         W_MIN_MS, W_MAX_MS
                     )
                     
                     pulse_count += 1
-                    print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms")
+                    print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
                     
-                    # Generate pulse
-                    wid = build_pulse_wave(pi, GPIO_PULSE, width_ms)
-                    if wid >= 0:
-                        pi.wave_send_once(wid)
-                        while pi.wave_tx_busy():
-                            time.sleep(0.001)
-                        pi.wave_delete(wid)
-                    else:
-                        pi.write(GPIO_PULSE, 1)
-                        time.sleep(width_ms / 1000.0)
-                        pi.write(GPIO_PULSE, 0)
+                    # Generate arcade button press using dual-pin protocol
+                    arcade_button_press(pi, GPIO_PIN5, GPIO_PIN6, width_ms)
                     
                     # Refractory period
                     t_ref_end = time.time() + (REFRACTORY_MS / 1000.0)
@@ -314,11 +347,14 @@ def start_serial_thread():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("SICK PBT Sensor - Combined Web App + GPIO Pulse Output")
+    print("SICK PBT Sensor - Arcade Interface + Web Visualization")
     print("=" * 60)
     print(f"Serial port: {SERIAL_PORT} @ {BAUD} baud")
     print(f"Samples per second: {SAMPLES_PER_SEC}")
-    print(f"GPIO pulse output: Pin {GPIO_PULSE}")
+    print(f"Arcade Interface:")
+    print(f"  Pin 6 (BCM {GPIO_PIN6}): Press START signal (Active HIGH)")
+    print(f"  Pin 5 (BCM {GPIO_PIN5}): Press ACTIVE signal (Active LOW)")
+    print(f"Pulse Mapping: HIGH peak → SHORT pulse (INVERTED)")
     print(f"Trigger threshold: {TRIGGER_THRESHOLD} ADC counts")
     print(f"Web server: http://{HOST}:{PORT}")
     print("=" * 60)
@@ -336,6 +372,8 @@ if __name__ == '__main__':
         if ser:
             ser.close()
         if pi:
-            pi.write(GPIO_PULSE, 0)
+            # Reset arcade interface pins to default states
+            pi.write(GPIO_PIN6, 0)  # Pin 6 back to LOW
+            pi.write(GPIO_PIN5, 1)  # Pin 5 back to HIGH
             pi.stop()
 
