@@ -174,6 +174,10 @@ socket.on('initial_data', (data) => {
     
     document.getElementById('buffer-size').textContent = rawData.length;
     document.getElementById('sample-count').textContent = totalSamples;
+    
+    if (data.pulse_count !== undefined) {
+        document.getElementById('pulse-count').textContent = data.pulse_count;
+    }
 });
 
 socket.on('sensor_data', (data) => {
@@ -187,6 +191,10 @@ socket.on('sensor_data', (data) => {
         
         document.getElementById('buffer-size').textContent = rawData.length;
         document.getElementById('sample-count').textContent = totalSamples;
+        
+        if (data.pulse_count !== undefined) {
+            document.getElementById('pulse-count').textContent = data.pulse_count;
+        }
     }
 });
 
