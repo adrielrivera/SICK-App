@@ -3,4 +3,5 @@ Flask-SocketIO==5.3.5
 python-socketio==5.10.0
 pyserial==3.5
 python-engineio==4.8.0
+pigpio>=1.78
 
