@@ -242,14 +242,32 @@ Capstone Project - SICK Team
 - SICK Capstone Team
 - Adriel Rivera
 
+## Performance & Architecture
+
+**Important:** Running multiple sensors + web server on one Pi can strain resources!
+
+See performance guides:
+- **`PERFORMANCE_SUMMARY.md`** - Quick overview of concerns & solutions (start here!)
+- **`ARCHITECTURE_CONCERNS.md`** - Detailed technical analysis
+- **`monitor_performance.sh`** - Check if your Pi can handle the load
+- **`start_optimized.sh`** - Startup script with proper priorities
+- **`config_optimized.py`** - Performance-tuned configuration
+
+**TL;DR:** Use Raspberry Pi 4 with 4GB+ RAM, run `./start_optimized.sh`, test under load before demo day!
+
 ## Deployment
 
 See deployment guides:
 - **`DEPLOYMENT_SUMMARY.md`** - Overview of deployment options (start here!)
 - **`DEPLOYMENT.md`** - Complete deployment guide with all methods
 - **`DEPLOY_QUICK.md`** - Quick reference card
+- **`CONSTANT_URL_GUIDE.md`** - Get a permanent URL for your multi-sensor dashboard
+- **`URL_OPTIONS.md`** - Quick URL options summary
 
-**TL;DR:** Since your app needs Arduino access, it must run on the Raspberry Pi. Use **ngrok** for easy public access during demos!
+**TL;DR:** Since your app needs Arduino access, it must run on the Raspberry Pi. 
+
+**For demos:** Use **ngrok** for instant public access  
+**For permanent setup:** Use **Cloudflare Tunnel** (FREE!) with a $1 domain → `sensors.yourdomain.com`
 
 ## Acknowledgments
 
