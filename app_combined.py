@@ -47,7 +47,7 @@ cap_end = 0.0
 CAPTURE_MS = 250
 REFRACTORY_MS = 200
 A_MIN, A_MAX = 60, 100
-W_MIN_MS, W_MAX_MS = 60, 1500
+W_MIN_MS, W_MAX_MS = 10, 1500
 REARM_LEVEL = TRIGGER_THRESHOLD * 0.4
 
 # Statistics for pulse generation
@@ -100,8 +100,8 @@ def arcade_button_press(pi, pin5, pin6, duration_ms):
     # Step 3: Pin 5 LOW (press confirmed)
     pi.write(pin5, 0)
     
-    # Step 4: Small delay then reset (cleanup)
-    time.sleep(0.010)  # 10ms hold
+    # Step 4: Hold active state longer (cleanup)
+    time.sleep(0.100)  # 100ms hold (pins stay active longer)
     
     # Step 5: Reset both pins to idle state
     pi.write(pin5, 1)  # Pin 5 back to HIGH
