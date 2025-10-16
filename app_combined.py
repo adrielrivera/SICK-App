@@ -43,8 +43,8 @@ cap_end = 0.0
 # GPIO pulse parameters (from pbt_pulse_plot.py)
 CAPTURE_MS = 250
 REFRACTORY_MS = 200
-A_MIN, A_MAX = 60, 85
-W_MIN_MS, W_MAX_MS = 10, 1500
+A_MIN, A_MAX = 60, 95  # Cover your actual peak range (60-95)
+W_MIN_MS, W_MAX_MS = 10, 100  # Shorter max pulse for better high scores
 REARM_LEVEL = TRIGGER_THRESHOLD * 0.4
 
 # Statistics for pulse generation
@@ -225,6 +225,7 @@ def serial_reader_thread():
                 
                 pulse_count += 1
                 print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
+                print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
                 
                 # Generate arcade button press using Arduino GPIO control
                 arcade_button_press(ser, width_ms)
@@ -352,6 +353,7 @@ if __name__ == '__main__':
     print(f"  Arduino Pin 6: Press START signal (Active HIGH, 5V output)")
     print(f"  Arduino Pin 5: Press ACTIVE signal (Active LOW, 0V output)")
     print(f"Pulse Mapping: HIGH peak → SHORT pulse (INVERTED)")
+    print(f"Peak Range: {A_MIN}-{A_MAX} ADC → Pulse Range: {W_MIN_MS}-{W_MAX_MS}ms")
     print(f"Trigger threshold: {TRIGGER_THRESHOLD} ADC counts")
     print(f"Web server: http://{HOST}:{PORT}")
     print("=" * 60)
