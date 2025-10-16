@@ -77,34 +77,35 @@ def map_linear_inverse(x, x0, x1, y0, y1):
 
 def arcade_button_press(pi, pin5, pin6, duration_ms):
     """
-    Simulate arcade button press with dual-pin protocol.
+    Arcade button press protocol for your specific motherboard.
     
-    Pin 6: Active HIGH (normally LOW) - signals press start/end
-    Pin 5: Active LOW (normally HIGH) - signals press active
+    Pin 6: Active HIGH (normally LOW) - Press start signal
+    Pin 5: Active LOW (normally HIGH) - Press confirmation signal
     
     Sequence:
     1. Pin 6 goes HIGH (press start)
-    2. Pin 5 goes LOW (press confirmed)
-    3. Hold for duration_ms
-    4. Pin 5 goes HIGH (release)
-    5. Pin 6 goes LOW (press end)
+    2. Wait for duration_ms (THE PULSE - arcade measures this gap)
+    3. Pin 5 goes LOW (press confirmed)
+    4. (Rest can be cleanup/reset)
+    
+    The arcade measures the time between Pin 6↑ and Pin 5↓
     """
     # Step 1: Pin 6 HIGH (press start signal)
     pi.write(pin6, 1)
-    time.sleep(0.002)  # 2ms delay for signal propagation
     
-    # Step 2: Pin 5 LOW (press active)
-    pi.write(pin5, 0)
-    
-    # Step 3: Hold for the mapped duration
+    # Step 2: Wait for the mapped duration
+    # This is THE PULSE that arcade measures (Pin 6 HIGH to Pin 5 LOW)
     time.sleep(duration_ms / 1000.0)
     
-    # Step 4: Pin 5 HIGH (release signal)
-    pi.write(pin5, 1)
-    time.sleep(0.002)  # 2ms delay
+    # Step 3: Pin 5 LOW (press confirmed)
+    pi.write(pin5, 0)
     
-    # Step 5: Pin 6 LOW (press end)
-    pi.write(pin6, 0)
+    # Step 4: Small delay then reset (cleanup)
+    time.sleep(0.010)  # 10ms hold
+    
+    # Step 5: Reset both pins to idle state
+    pi.write(pin5, 1)  # Pin 5 back to HIGH
+    pi.write(pin6, 0)  # Pin 6 back to LOW
 
 
 def read_one_int(ser):
@@ -290,7 +291,9 @@ def serial_reader_thread():
     if ser:
         ser.close()
     if pi:
-        pi.write(GPIO_PULSE, 0)
+        # Reset arcade interface pins to idle state
+        pi.write(GPIO_PIN6, 0)  # Pin 6 back to LOW
+        pi.write(GPIO_PIN5, 1)  # Pin 5 back to HIGH
         pi.stop()
     print("Serial reader thread stopped")
 

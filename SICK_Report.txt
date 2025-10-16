@@ -1,0 +1,1297 @@
+
+
+
+
+Project Title: Project Report on Advanced Arcade Hammer Machine: Integrating SICK Sensors for Better Gameplay
+
+Product Development
+Component B
+
+Name: 
+Class
+Kevin Anthony Velasco Orjalo
+S4-03
+Adriel Rivera Huyatid
+S4-03
+Lau Jia Guan
+S4-03
+Chan Si Yeui (Chen Sirui)
+S4-04
+
+
+B1 Project Specifications
+Block Diagram of systems in the current arcade machine:
+
+
+Figure 1.0
+
+The current arcade machine consists of a credit system which is made up of a coin slot as the input subsystem, the arcade machine motherboard, and LEDs to display the number of credits and a speaker to alert users that a credit was added. It also consists of a scoring system which is made up of a proximity and photoelectric sensor as the input subsystem, the arcade machine motherboard, and LEDs to display the score and a speaker to read out the score.
+
+
+
+
+Block Diagram of systems in the product:
+
+
+Figure 1.1
+
+Since we had additional components that were not included in component A of the report, there are some changes to our project scope which includes adding a credit system using the safety switch and safety lock, and integrating the safety lock into the safety system. Some designs were also changed from component A which includes integrating the pressure sensor and inductive proximity sensor together. The inductive proximity sensor will not be used as we have found that it would be unnecessary.
+
+Credit system
+
+Input subsystem
+The input subsystem will consist of the SICK STR1 safety switch which will replace the preexisting coin slot from the arcade machine. FlexLock will lock the back panel and will be integrated into the credit system such that if it was unlocked and the back panel was accessible to users, credits would not be allowed to be added to prevent users from continuing to play. Research is needed to find out:
+what the output signals of the STR1 and FlexLock are
+how can the FlexLock be integrated without disrupting the STR1’s signal when in normal conditions.
+
+Process subsystem
+Since the motherboard in the arcade machine is unable to be hacked and is what controls when a credit is added, it will be used as the process subsystem. Further research is needed to find out:
+ How can the motherboard be hijacked so that the signals from the STR1 and FlexLock will be able to send a signal to add credits?
+ What input signal is required to add credits?
+
+Output subsystem
+The output subsystem will include the LED and speaker from the arcade machine. The LED displays the number of credits that have been added and the speaker will indicate to the player when a credit has been added by playing a sound. No further research is required as both the LED and speaker are directly controlled by the motherboard which has been coded by the manufacturer.
+
+Scoring system
+
+Input subsystem
+As mentioned in component A of the report, the SICK pressure sensor will be used to determine the score, replacing the current proximity and photoelectric sensors in the arcade machine. This is done to improve the accuracy of the scoring system by using the pressure exerted by the user onto the pressure sensor to determine the score instead of the time that the metal plunger in the arcade machine takes to move. Further research is needed to find out:
+How does the output of the pressure sensor change when the pressure exerted on it increases and decreases
+
+Process subsystem
+Since the motherboard in the arcade machine is unable to be hacked and is what calculates the score, it will be used as the process subsystem. Further research is needed to find out:
+How the arcade machine score is determined 
+How the arcade machine’s scoring system can be hijacked.
+
+
+Output subsystem
+The output subsystem will consist of the LED and speaker from the arcade machine. The LED will display the score and the speaker will read out the score. No further research is required as both the LED and speaker are directly controlled by the motherboard which has been coded by the manufacturer.
+
+Safety system
+
+Input subsystem
+As component A of the report mentioned, we will use the sensing camera and lidar for our safety system. Additionally, we will also use the FlexLock safety lock. The FlexLock will be used to lock the back panel. If tampered with by players and unlocked, it will send a signal to trigger the sensing camera to capture whoever was tampering with the lock through a video and send it to the owner. The lidar will be used for safety detection by detecting and alerting players if people are walking near the arcade machine while the player is playing. Research is needed to investigate:
+What is the output signal of the flexLock?
+What is the output of the LiDAR’s reading?
+
+Process subsystem
+The process subsystem for both the lidar detection system and camera will be a Raspberry Pi. Firstly, for the LiDAR detection, all inputs of the LiDAR will be read through a python script that provides details on how far an object is at every angle in a 240° scope. Then, … insert lidar explanation here. Some of the research questions were:
+
+
+
+For the camera, the camera is able to take recordings based on a digital input. When any part of the safety system malfunction or the door happens to be unlocked, a digital input can be fed to the camera and instruct it to take a recording, allowing the owners and maintenance workers to identify what went wrong when the issue occurred, or who may have unlocked the door without explicit permission. Thus some of the research questions were:
+What sort of digital signal triggers the sensing camera to start recording?
+How can the door being unlocked send a signal to start a recording?
+
+Output subsystem
+
+For the LiDAR detection system, if the LiDAR detects people walking near the arcade machine, an alarm signal will be used to gain the player’s attention. While for the sensing camera system, the camera will capture a 30s video recording including what happened 10s before the issue occurred, and 20s after the issue occurred. Thus some of the research questions were:
+What sort of alarm signals can be used to get the attention of the player quickly?
+Is it possible to hijack the LED displays and buzzer included in the arcade machine?
+How can the video recorded by the sensing camera be sent to the owner?
+
+From this, we embarked on our research and investigation.
+
+
+
+B2 Research/Investigation of arcade machine’s current system, SICK sensors and possible solutions
+Arcade machine systems
+To understand how the output of the different sensors trigger the arcade machine to add one credit when a coin is inserted or determine a score, an oscilloscope was used to observe the output signals of the coin slot, inductive sensor and photoelectric sensor. Although a voltmeter could have also been used to observe the changes in voltage level, since it was unknown whether the output signals were DC or AC and a voltmeter does not clearly show how the signals change in different conditions, hence an oscilloscope was chosen instead.
+Credit System
+
+Coin Slot Operation
+
+Output of the coin slot changes from HIGH to LOW when a coin is added, indicating that a falling-edge is required for the coin slot to count one credit.
+
+Figure 2.0
+
+From our analysis of Figure 2.0, when no coin is inserted, the signal remains at a consistent 4.080V level. However, when a coin is inserted into the slot, the voltage level drops to 0V, and then rises back to 4.080V, creating a falling edge that is detected by the machine and registers 1 credit on the arcade machine. 
+
+Figure 2.1
+With reference to Figure 2.1:
+Black wire: Ground
+Yellow wire: Vcc
+White wire: Signal Output
+
+The white wire can be used to input the signal from the SICK sensors.
+Scoring System
+The scoring system consists of a proximity sensor and a photoelectric sensor which are integrated together.
+
+Proximity Sensor Operation
+It sends a signal to give the score when the metal plunger returns to its original position. When the metal plunger only touches the proximity sensor and does not pass the photoelectric sensor, the machine gives a consistent score of 120 points despite the amount of time it takes for the plunger to return, showing that the score is not dependent on the time it takes for the plunger to leave and return to its original position and that the score is given only when it returns to its original position.
+
+Output of sensor:
+
+From Figure 2.2, it can be seen that when the proximity sensor is in contact with the metal plunger, it gives a LOW output. When the proximity sensor is not in contact with the metal plunger, it gives a HIGH output.
+
+Figure 2.2
+
+Figure 2.3
+With reference to Figure 2.3:
+Blue wire: Ground
+Red wire: Vcc
+Black wire: Output
+
+Photoelectric Sensor Operation
+
+Light is emitted from the sensor but is not reflected back to the sensor as it is too far from the wall of the arcade machine. When the metal plunger is pushed down, it reflects the light ray which is detected by the sensor. 
+
+From Figure 2.4, it can be seen that when light is reflected, the output signal of the sensor is LOW. When light is not reflected, the output signal of the sensor is HIGH.
+
+Figure 2.4
+
+Figure 2.5
+With reference to Figure 2.5:
+Blue wire: Ground
+Red wire: Vcc
+Black wire: Output
+
+Integrated System Operation
+When the output of the proximity sensor and photoelectric sensor are compared together, they form waveforms as seen in Figure 2.6.
+
+Figure 2.6
+Yellow: Output from proximity sensor
+Blue: Output from photoelectric sensor
+
+To investigate how the score was determined from the two outputs, the outputs of four different scores were taken on an oscilloscope, and the duration of the pulses produced from both the photoelectric and proximity sensor and the time differences between the rising-edges and falling-edges were calculated. 
+
+The results are shown in the table below:
+
+Score
+Waveforms
+Duration of pulse / s
+Time difference in edges / s
+-
+-
+Photoelectric sensor
+Proximity sensor
+Front
+Back
+140
+
+0.720
+0.920
+0.100
+0.100
+260
+
+0.048
+0.136
+0.036
+0.052
+420
+
+0.124
+0.168
+0.020
+0.024
+450
+
+0.168
+0.196
+0.012
+ 0.016
+500
+
+
+0.224
+0.160
+0.040 :(
+0.024 :(
+
+
+From the table above, it can be seen that the score is not calculated by the duration of the pulses but instead calculated by the time difference between the rising edge from the photoelectric sensor’s output and the falling edge from the proximity sensor’s output, as there is no relationship between the scores and the duration of the pulses, but for the time differences, the shorter the time difference, the higher the score. For example, the time difference for the lower scores of 140 and 260 are 0.100s and 0.036s while the time difference for higher scores of 420 and 450 are 0.020s and 0.012s. 
+
+Safety System
+There is no current safety system in the arcade machine. This could lead to many possible injuries as arcades are usually cramped, leading to people walking near arcade machines and getting hit by players when they are focused on the game and are not aware of their surroundings. (may need to add reasoning on why flexlock is needed)
+
+
+
+
+SICK Sensors
+STR1 RFID Switch
+From the datasheet, we found the following information:
+
+
+
+Figure 2.7
+
+OSSD stands for output signal switching device which produces a pulsing signal to to ensure that the sensor is functioning as intended and protect the device from short circuits by comparing both OSSD outputs against each other and switching it off if there is any disruption in either of the two OSSD outputs.
+
+
+Figure 2.8
+
+
+Using the information in Figure 2.8 , we connected the pins using test probes to analyse the signals, as well as to the output OSSD signal as indicated in Figure 2.7, to control our credit system.
+
+From testing the output signal through an oscilloscope, we obtained this information:
+
+ON (actuator is in contact)
+OFF (actuator is not in contact)
+
+
+When the actuator is close enough to the RFID sensor, the output is HIGH. There is regular pulsing as indicated in Figure 3.3.1.
+The signal has a voltage of 23.6V when HIGH.
+When the actuator is too far from or not in contact with the RFID sensor, the output is a stable LOW with no pulsing. The signal has a voltage of 0V when LOW.
+
+
+FlexLock
+From the datasheet, we found the following information: 
+
+
+
+Figure 2.8
+
+Figure 2.9
+
+This description provided us with details on how to process the Output Signal Switching Device (OSSD) signal safely, without disrupting the sensor's operation.
+
+The grey and pink wires provide an OSSD output pulse from the sensor, which can be connected to the arcade machine so that when the safety lock is unlocked, the machine is not playable.
+
+From testing the output signal through an oscilloscope, we obtained this information:
+
+Output when locked (ON State on datasheet)
+Output when unlocked (OFF state on datasheet)
+
+Locked with the actuator inserted
+
+Locked without the actuator inserted
+
+When the FlexLock is locked with the actuator inserted, it produces a HIGH with pulsing and has a voltage of 24.0V. When it is locked without the actuator inserted, it produces a LOW with a voltage of 400mV.
+When the FlexLock is unlocked, both with and without the actuator, it produces a LOW with a voltage of 400mV.
+
+
+In addition, we observed that for both the STR1 RFID switch and FlexLock, whenever the OSSD signal input was distorted or modified in any way, even by improper grounding, the device would switch off and cease functioning until the power supply was turned off and then reconnected. (include how both can be connected using a T-connecter)
+
+IME inductive proximity sensor
+From the datasheet, we gathered this information:
+
+Figure 2.10
+Pin connection:
+Brown: Live
+Black: Output (Switching output)
+Blue: 0V
+
+Voltage drop: 0.3V-0.4V
+
+Output (Metal object detected):
+Output (no detection):
+
+
+When the IME detects a metallic object, it produces a HIGH output with a voltage of 13.00V (0.3V supply drop). 
+When there are no objects in front of the IME, it has a LOW output of 200mV. The signal remains the same if a non-metallic object is placed in front of the IME.
+
+
+Photoelectric proximity sensor
+From the datasheet, we found the following information:
+
+
+Figure 2.11
+
+
+Figure 2.12
+
+The sensitivity of the sensor can be changed by turning a potentiometer at the top. Turning clockwise increases its sensitivity and the range that it can detect objects, and turning anticlockwise decreases its sensitivity and the range that it can detect objects.
+
+The potentiometer at the back switches mode of operation, changing the output of the sensor based on the mode(e.g. when detecting objects in range: LOW to HIGH when in light mode, HIGH to LOW when in dark mode)
+
+Output when in range (light mode)
+Output when not in range (light mode)
+
+
+Voltage: 11.20V to 11.40V (0.60V to 0.80V voltage drop from source)
+
+
+Voltage: 0V to -200mV
+Output when in range (dark mode)
+Output when not in range (dark mode)
+
+
+Voltage: 0V
+Voltage: 11.20V to 11.40V (0.60V to 0.80V voltage drop from source)
+
+
+
+PBT Pressure Sensor
+
+From the datasheet, we found the following information:
+
+
+
+Figure 2.13
+
+From Figure 2.13, we identified the pins of the 4-pin wire that connects to the sensor. This diagram explains the connections that should be made, and we replaced the ‘load’ with a resistor.
+
+Figure 2.14
+
+Using a multimeter, we checked the connectivity and identified the cable colours that correspond to each pin and eventually wired it up, making the following observations:
+
+
+Figure 2.15
+As the output signal did not vary in voltage but rather current as indicated under the ‘Output Signal’ of Figure 2.15, checking if the sensor worked could not be easily monitored and instead, measured the voltage across the resistor. If it increases, following Ohm’s Law of  
+V=IR, the voltage should increase as well as it is directly proportional to the current. This was demonstrated in the readings we took:
+
+Figure 2.16
+
+In Figure 2.16, the voltage increases when we pumped air into the sensor, from 1.880V to a 2.960V peak. This shows that it is possible to identify when air is pumped into the sensor, and will be useful for processing data using our Raspberry Pi.
+
+LiDAR Sensor
+
+
+Processing Circuits
+Filters
+
+Passive Filters
+
+Passive filters are circuits that are made up of inductors such as capacitors and resistors to filter signals without requiring an external power source,
+
+Figure 2.17
+
+Figure 2.18
+
+Some possible configurations include a low-pass passive filter and a high-pass filter that utilise an RC circuit, as shown in Figures 2.17 and 2.18 (Arrow Electronics, 2018). Low-pass filters only allow low frequencies to pass through, while high-pass filters only allow high frequencies to pass through. 
+
+Figure 2.19
+
+This is modelled in figure 2.19 where the passband is the signal that is seen by the output, and the stop band is the frequency that is blocked by the filter (Davis, n.d.). In our case, the low-pass filter is the most suitable due to the waveform of the OSSD signal creating the periodic signal switching as previously shown in figure 2.7 which creates pulses that act as unnecessary noise that would be unideal for our arcade machine.
+
+
+Active Filters
+
+Active filters are circuits that utilise op-amps to provide a filter-like performance at different frequencies (Active Low Pass Filter - Op-Amp Low Pass Filter, n.d.).
+
+
+Figure 2.20
+Figure 2.20 is one such configuration that can be constructed to create a non-inverted signal, preventing low-frequency signals from passing through and allowing only higher-frequency signals to be detected on Vout, with the addition of a voltage follower after the previously discussed passive filter. This is commonly known as a first-order filter, as it is simple and follows the expected exponential rise and fall curve that can be commonly seen as a result of a single capacitor. Higher-order filters introduce more capacitors and inductors, creating more complex filtering behaviour. The main advantage of active filters is that they ensure the signal does not attenuate and lose signal amplitude, as they are powered by an external power source that restores the output signal. However, as a result, more power is required to power this circuit.
+
+
+As we have narrowed our research down to low-pass filters for our arcade machine, we decided to explore other possible active filter solutions that meet our needs.
+
+Second-order Active Filters
+
+This circuit stage can be used for all types of filtering circuits, including high-pass, low-pass, and band-pass filters. The Sallen-Key filter is a commonly used voltage-controlled, voltage-source circuit, as the operational amplifier can be configured as either a voltage follower or a non-inverting amplifier (Active Low Pass Filter - Op-Amp Low Pass Filter, n.d.). The circuit below is an example of a Sallen-Key low-pass filter (Texas Instruments, 2022).
+
+Figure 2.21
+The circuit rejects noise and is typically used to amplify filtered signals. This is also used as it is simpler to combine first and second-order filter designs together due to their configuration. These second-order filters also exhibited various characteristics that were classified into different architectures and filter types that can be seen in the tables by Texas Instruments (Karki, 2023):
+
+
+Figure 2.22
+However, these only apply to second-order filters. These are useful for tuning more complex filters, but our desired waveform can be easily achieved using first-order filters, as there is no significant advantage offered, and this would only add complexity to our circuit and potentially increase power dissipation.
+
+Switching Devices
+
+After processing the signal, we found that it was necessary to step down our signal to a lower voltage, making it safe for our arcade machine to process. This was especially crucial, given that our current signal was around 22.5V and required a reduction to approximately 5V.
+
+
+MOSFETs
+
+A Metal Oxide Semiconductor Field Effect Transistor, commonly known as a voltage-controlled switch, is commonly used for high-speed switching and digital circuits. 
+
+
+In Figure 2.23, the circuit symbol and how the MOSFET is built can be seen. It has three terminals: the Source, Drain, and Gate terminals. (Electronics Tutorials, n.d.) They operate in either Depletion Mode or Enhancement Mode, which corresponds to whether the switch is Normally Open or Normally Closed. When the gate-source voltage reaches the rating indicated by a MOSFET’s datasheet (which can vary), it allows/prevents electrons from flowing from the drain to the source, depending on its mode.
+
+Based on this information, we can design our filtered signal to be provided to the MOSFET through its gate terminal and create a stable signal of a lower voltage, specifically 5V, to be sent to the arcade machine instead.
+
+Electromechanical Relay 
+
+Electromechanical relays are switches that can be switched on/off using electricity, which causes an electromagnet to be activated, allowing a movable contact to touch other contacts and permit electrons to flow through.  (Electronics Tutorials, n.d.)
+
+This is visualised in the model to the left, which shows the iron armature that touches different contacts to allow electricity to flow to either the Normally Open or Normally Closed pins.  However, as it is still a mechanical device, switch bouncing still occurs, as shown in the figure below (Khatri, 2022).
+
+Figure 2.24
+This happens because they vibrate before reaching their final position and do not make a single clean switch to a new state, mainly due to inertia. This is especially inconvenient in our use case due to how the arcade machine reacts to falling and rising edges, which may result in adding more credits than desired.
+
+However, given the nature of the electromechanical relay, it may be favourable for our case as it electrically isolates the 24V circuit and the 5V arcade machine. Thus, it would make it much easier to troubleshoot and make it less likely to encounter noise in the grounding of the circuit. Relays are also less susceptible to noise as they are controlled by current and do not respond to random voltage spikes unlike MOSFETs.
+Debouncing Circuits
+
+Given that mechanical devices have switch bounce because of , we decided to explore possible solutions to eliminate this issue.
+
+Schmitt Trigger
+
+Schmitt triggers are used to reject noise and hysteresis (Texas Instruments, 2025) by using the Hysteresis curve as shown here: 
+
+Figure 2.25
+This graph illustrates how the output voltage varies with changes in the input voltage, taking into account previous inputs (Types of Hysteresis, n.d.). This visualises the concept of ‘positive feedback’ and how the reference voltage of a Schmitt trigger changes based on its previous inputs, enabling it to distinguish between a true HIGH and a true LOW.
+
+
+The gap between the voltage threshold for a HIGH input and the threshold for a LOW input is known as the hysteresis voltage (Schmitt Trigger, 2025). As the noise of a switch bounce is between a true HIGH and a true LOW, known as the upper threshold and lower threshold, the noise will be within the hysteresis voltage and will be ignored.
+
+When the voltage exceeds the upper threshold for a prolonged period, the output will be HIGH, and when the voltage falls below the lower threshold for a prolonged period, the output will be LOW. This is ideal for switch debouncing and can be designed with op-amps as shown below:
+
+
+As a non-inverting Schmitt Trigger, it acts just as a debouncer that can be designed for different voltage thresholds.
+
+
+
+
+
+Set-Reset Latch
+
+SR Latches are circuits that store single-bit information until deliberately changed by another signal. One such configuration is as below (Latches in Digital Logic, 2025):
+
+
+
+They can be built with either NOR gates or NAND gates, as they are both universal gates. The circuit on the left is built using NOR gates. The Set (S) sets the output (Q) to 1, whereas the Reset (R) sets Q to 0. They respond to inputs as seen in the truth table below:
+
+
+
+
+S
+R
+Q
+Ǭ (NOT of output)
+0
+0
+No Change
+No Change
+0
+1
+0
+1
+1
+0
+1
+0
+1
+1
+Invalid
+
+
+As a result, the output will not change when there is no input, will change predictably when one is pressed, and will usually be in an invalid state when both S and R are HIGH. This would be ideal in a switch debouncing circuit, with the only tradeoff being that two signals must be fed into the circuit.
+
+
+
+
+References
+<insert later under citations tab in Tools -> Citations ->Add Citation Source>
+
+
+B3 Development and Evaluation of Possible Solutions
+B3.1 Analysis and proposal of how to integrate a pressure sensor and IME into the arcade machine to calculate the score
+B3.1.1 Requirements and Constraints
+1.1 Functional
+Each hammer strike must generate a measurable pressure signal within… (will fill in later
+System must reset to a consistent pressure
+1.2 Mechanical and Pneumatic
+Airtight connections to PBT sensor port (G1/4
+Durable enough to withstand repeated impacts
+Avoid leaks, pressure loss, or pump damage
+1.3 Electrical
+PBT output should be compatible with arcade machine controller input
+2 Proposed Solution
+2.1 Concept Overview
+Before striking
+After striking
+
+
+
+A pump, either a bicycle pump or hand pump will be mounted under the hammer strike plate. When struck, the downward motion will push the plate down along with the pump handle, compressing air and sending a pressure spike to the PBT. It is necessary to have a secure connection between the pump and the PBT. 
+2.2 Mechanical Assembly
+G1/4 -> Schrader valve adapter
+Use teflon or PTFE tape to seal the connections MAKE SURE NO LEAKAGE
+Secure mounting of the bicycle pump under the strike plate
+Flexible hose between pump and sensor for more options to place sensor
+2.3 Pneumatic Flow
+
+The higher the pressure, the larger the voltage output. If the voltage falls between certain ranges, the display and speaker will output a specific weight output
+2.4 Inductive sensor mount
+
+
+Test 1
+
+First piece made as a benchmark for further improvement. The shape was mimicked from the original mounting bracket and the hole was a placeholder and to be adjusted to fit the inductive sensor
+Test 2
+
+Improvements made:
+Height of mount was shortened to fit within frame
+Hole size was increased by 1 mm so that the inductive sensor could slot through
+Additional supports were added on the rear to reduce flexing/bending
+Final
+
+Improvements made:
+The mounting hole was shifted to the correct spot
+Cut down on material used
+Additional single ridge added on where material was removed to reduce flexing
+
+
+
+4 Calibration and testing
+4.1 Test Objectives
+Verify the pneumatic integrity of pump -> adapter -> PBT chain (ensure no leakages)
+Characterise pressure response vs impact intensity and ensure fast reset
+Ensure electrical output is compatible with scoring system
+Derive a calibration curve (peak pressure -> score range)
+Confirm consistency and durability over cycles
+4.2 Equipment and Fixtures
+SICK PBT 6042606 pressure sensor (G1/4)
+Pump assembly and adapters (G1/4 <-> Schrader ideally, but may have to find alternatives), PTFE tape
+Oscilloscope 
+Multimeter
+Known impact masses or a test striker with fixed drop heights
+Soapy water spray for leak check (still learning about this)
+4.3 Test Setup
+Assemble pump → adapter → PBT with PTFE tape; torque snug, avoid over-tightening
+Model mount on Fusion360 → 3D print mounts → use hardware to fixate mount onto machine
+Place oscilloscope on the PBT output to capture peaks and pulse width
+Set camera or phone for slo-mo video for visual correlation
+4.4 Test Matrix
+
+ID
+Category
+Purpose
+T1
+Leak & Integrity
+Ensure airtight system before dynamic tests
+T2
+Electrical Baseline
+Confirm idle levels, scaling, and wiring
+T3
+Dynamic Response
+Capture peak pressure & decay vs. impact
+T4
+Repeatability
+Quantify variation for same impact
+T5
+Reset/Throughput
+Verify time to ambient between strikes
+T6
+Calibration
+Map peak pressure to score bins
+T7
+Durability
+Cycle test to check drift and failures
+T8
+Integration (HIL)
+End-to-end with arcade controller
+
+
+
+4.5 Procedures
+
+ID
+T1
+Goal
+Confirm that there are no leaks
+Steps
+Pressurize the line with the pump to a modest level (e.g., 1.0 bar).
+Spray soapy water on every joint; watch for bubbles ≥30 s.
+Record pressure decay: note value immediately, then at 30 s and 60 s.
+
+Record: Initial P (bar), P@30 s, P@60 s, visual leaks (Y/N).
+
+Pass/Fail: Pressure drop ≤ 5% at 60 s and no visible bubbles.
+
+
+
+ID
+T2
+Goal
+Verify output type and scaling
+Steps
+With the system at ambient, record idle output (V or mA).
+
+Apply a gentle press to ~0.5 bar and ~1.0 bar; record outputs.
+
+Confirm scaling (e.g., 0–10 V or 4–20 mA) and SIG200 channel config.
+
+Record: Pressure vs Output points (≥3 points), idle noise (mV RMS), wiring diagram reference.
+
+Pass/Fail: Output follows expected transfer; idle noise < 50 mV RMS (voltage) or 0.1 mA (current).
+
+
+
+ID
+T3
+Goal
+Capture peak pressure and decay vs impact
+Steps
+Use fixed masses and drop heights (e.g. 1kg at 10cm - 60cm)
+For each condition, perform 5 strikes
+Capture waveform and record peak pressure, rise time, and decay to 10%
+
+Record:
+Peak (bar), rise time (ms), decay (ms).
+
+Pass/Fail:
+Peak within sensor range (e.g., 0.2–4 bar), rise time < 50 ms, decay < 500 ms (or project target).
+
+
+
+ID
+T4
+Goal
+Quantify variation for identical impacts
+Steps
+Choose one condition (e.g., 1 kg at 30 cm).
+Perform 20 strikes, log peak for each.
+Calculate mean, standard deviation, and coefficient of variation (%CV).
+
+Record:
+20 peaks, mean, stdev, %CV.
+
+Pass/Fail:
+%CV ≤ 10% for same condition.
+
+
+
+ID
+T5
+Goal
+Verify time to ambient between strikes.
+Steps
+Perform two strikes spaced by 1000 ms, then 700, 500, and 300 ms.
+Measure residual pressure before the second strike.
+Compare peak of second strike to first strike.
+
+Record:
+Residual (bar), deviation of second peak (%).
+
+Pass/Fail:
+Residual < 5% of peak within 500 ms; second peak deviation ≤ 10%.
+
+
+
+ID
+T6
+Goal
+Map peak pressure to score bins
+Steps
+Use 3-5 impact levels (light, medium, hard, very hard)
+For each, log 5 strikes and compute median peak
+Define scoring ranges (pressure bins) or curve-fit function
+
+Record:
+Table of peak ranges → score; curve coefficients if curve used.
+
+Pass/Fail:
+Mapping is monotonic and bins are clearly separated (>0.1 bar or >1σ gap).
+
+
+ID
+T7
+Goal
+Check drift and failures over cycles
+Steps
+Run 60-70 strikes at mixed intensities
+Re-run T4 after cycling
+Compare mean peak values before and after
+
+Record:
+Pre/post mean, % drift, any leaks or mechanical loosening
+
+Pass/fail:
+Drift ≤ 5%, no new leaks or failures.
+
+
+
+ID
+T8
+Goal
+Validate end-to-end operation with arcade controller
+Steps
+WIP
+
+
+
+B3.2 Analysis and proposal of how to integrate TiM100 and TiM200 into the arcade machine for a safety detection system
+2 Proposed Solution
+2.1 Concept Overview
+*measurements are in cm
+
+TiM100 Placement (Top View
+TiM200 Placement (Side View
+
+
+
+Two LiDAR sensors are positioned to cover different intrusion directions around the arcade hammer machine. The TiM100 is mounted at the front, aligned with the strike plate, and oriented to scan the left and right of the user’s standing position. Its role is to detect people approaching from the sides, where only presence detection is required, making the TiM100’s simpler capabilities sufficient. The TiM200 is mounted overhead, angled downward to monitor the area behind the user. This sensor is able to return the distance between itself and the obstruction, which is essential to distinguish between a person approaching from behind and the hammer itself occluding the beam during a swing. Together, the placements ensure full coverage of side and rear intrusion zones while minimising false triggers from the hammer motion.
+2.2 Configuration and Interface
+Both LiDARs are configured using SOPAS ET via the SiLink2 Master (IOLA2US-01101), which serves as a temporary USB-to-IO-Link bridge between the sensor and a Windows PC. Through SOPAS, the detection field geometry, filtering parameters, and output logic are defined and written into the sensor’s non-volatile memory.
+Once configuration is complete, the IOLA2US module and laptop are removed. Each sensor retains its internal setup and operates autonomously, outputting its digital or Ethernet signals directly to the Raspberry Pi. Power is supplied using a regulated 24 V DC source, with ground shared between the LiDAR unit and the Pi to maintain signal reference. For communication:
+
+TiM100 → Digital Output 1 (presence ON/OFF) connected to Pi GPIO input through a 3.3 V-compatible interface.
+
+TiM200 → Ethernet link to the Pi for continuous distance data telegrams (LMD scans).
+
+Shielded cables and proper grounding are used to minimise electrical noise and ensure stable measurements. 
+2.3 Functional Logic and Operating Principle
+The Raspberry Pi acts as the edge processor, replacing the previously planned SIG200 logic. It receives the TiM100 presence bit and parses TiM200 range data to determine system state according to the following algorithm:
+
+
+Condition
+Detected Range / Signal
+Classification
+System Response
+Distance < 0.40 m
+Very close return under sensor
+Hammer occlusion
+Maintain RUN
+0.60 ≤ Distance ≤ 3.00 m
+Mid-range object behind user
+Person detected
+Trigger ALARM
+> 3.00 m or no return
+Empty area
+Safe
+Resume READY state
+
+
+A dwell time filter (~120 ms) ensures that short-lived noise does not trigger false alarms, and a lockout interval (~1 s) after each detection prevents rapid re-triggering. All computations are handled in the Pi’s Python program, which also interfaces with the other subsystems (RFID start, pressure sensor, display).
+2.4 Zone Definition in SOPAS
+
+TiM100 Zone
+
+Narrow dual-trapezoidal detection field extending forward up to 2.5 meters from the cabinet front. The two angled zones form a shallow V-shape, each covering roughly 40–45° from the centerline, designed to detect movement entering from either the left or right side toward the user’s standing position. This configuration provides reliable side intrusion monitoring while maintaining an unobstructed safe zone for gameplay.
+
+TiM200 Zone
+Polygonal region projected behind the user, spanning 250 cm back and 200 cm wide. A “mask” excludes the machine body to avoid reflections. The zone’s near limit is 0.6 m to filter out the hammer’s motion path.
+SOPAS screenshots and exported parameter sets are included in the Appendix for reference.
+2.5 Electrical and Mechanical Integration
+Each sensor is mounted using adjustable aluminium brackets with vibration-damping washers. Cable routing avoids moving components and follows IP-rated conduits to the electronics compartment. Power distribution is fused and labelled for safety. All connectors use keyed M12 industrial plugs to prevent mis-wiring. Both LiDAR units share a common ground with the Raspberry Pi system.
+
+^^ ts is a placeholder
+2.6 Testing and Validation
+
+Test ID
+Objective
+Procedure
+Expected Outcome
+L1
+Validate side intrusion (TiM100)
+Walk into right/left zone
+Pi logs intrusion + alarm ON
+L2
+Validate rear intrusion (TiM200)
+Approach from behind
+Pi logs intrusion + alarm ON
+L3
+Hammer immunity
+Swing hammer during play
+No false trigger
+L4
+Resume test
+Leave area clear
+Game resumes READY
+L5
+Power cycle test
+Restart system
+Sensor retains field config
+
+
+
+B3.3 Analysis and proposal of integration of STR1 safety switch and FlexLock into the arcade machine to replace the coin slot
+B3.3.1 Iteration of Potential Solutions to Replace Coin Slot System (MOSFET vs relay, diff filters, diff variants of STR1 part)
+Based on our investigations, we derived the following requirements for our solutions:
+Convert the OSSD signal to a stable output without corruption or distortion
+Create a falling edge that can be detected by the arcade machine
+Utilises the safe voltage levels of 24V for the sensors or the arcade machine voltage of 12V
+ Filtering System
+
+Based on our research in B2, we shortlisted two possible solutions.
+First-order Passive Low-Pass Filter
+Sallen-Key Active Low-Pass Filter 
+
+With these 2 solutions, we created simulated iterations to investigate them and determine the best option.
+
+First-order Passive Low-Pass Filter
+In order to tune our low-pass filter, we ensured our testing signal was as close to the OSSD signal as possible.
+
+
+Referring back to the figure of the waveform, designed our frequency parameters as such:
+
+ 
+
+After which, we found the frequency of the undesired pulses, which would allow us to tune the resistor-capacitor (RC) circuit values using the following calculations:
+f=1T
+f=130010-6
+f=3.33kHz
+
+However, this was not the frequency we used to determine the final RC circuit value, as our circuit aimed to avoid this frequency, not follow it. Thus, the filter must respond much slower than the pulse, such that the capacitor voltage does not change quickly during the pulses.
+
+Figure 2.?
+https://byjus.com/jee/charging-and-discharging-of-capacitor/
+
+Following the charging/discharging curve of the capacitor, within 1, the voltage will change steeply. Thus, to ensure that the capacitor voltage remains nearly constant during the 300 μs period, the RC time constant should be significantly greater than the pulse width. As such, we decided to calculate using a time period that was much greater than 300μs, specifically 20ms, which is approximately 60 times larger. Using this value and working backwards:
+
+=RC
+2010-3=RC
+2010-3= 2000(10)(10-6)
+R= 2kΩ, C =10μF
+
+Using these component values, we derived the cutoff frequency of:
+
+f=12RC
+f=12(2000)(1010-6)
+f=7.96Hz
+
+This provided a cutoff frequency of about 8Hz, ensuring the pulses are avoided by the output signal. As our lab only had 2.2kΩ resistors available, we utilised that value instead, which resulted in a cutoff frequency of 7.23Hz. This could still work and would not affect the desired outcome.
+
+
+
+Figure 3.?
+
+
+The output signal of the filter is monitored on XSC1, which is an oscilloscope and generates the waveform here:
+
+Figure 3.?
+At its lowest, it has a voltage of 23.590V and peaks at 23.942V. The drop exhibited is only 0.352V and would not be detected as a false positive by our regulator, making it suitable for our use case.
+
+
+Figure 3.?
+Checking the power dissipation of the passive filter, it dissipates 2.144mW on average and oscillates between 2.143mW and 2.145mW. This is considerably low and good for our use case.
+
+Sallen-Key Active Low-Pass Filter 
+
+Taking reference from the Butterworth Sallen-Key low-pass filter shown in section B2, we designed a similar active filter that excluded the additional battery included in their circuit. As we wanted the filter to act similarly to our passive filter, we used 8Hz as our target frequency and worked backwards, using 2.2µF as our desired capacitor, as we had it in our lab:
+f=12RC
+8Hz=12R(2.210-6)
+R=9042Ω
+Using this ideal resistor value, we found the closest available E24 resistor, 9.1kΩ. As we wanted it to have a predictable and stable cutoff, unlike the referenced picture, we ensured that the capacitors, C1 and C2, as well as resistors R1 and R2, were of the same value.
+
+Figure 3.?
+
+Unlike the previous iteration developed, the wattmeter was not able to be added, and we decided to use the power probes and add up the power dissipation of each component.
+
+The output signal of the filter is monitored on XSC1, which is an oscilloscope and generates the waveform here:
+
+This circuit is capable of providing an extremely stable signal with no fluctuations at all, with the voltage level of 22.494V, almost exactly 1.5V less than the VCC value as expected. This shows that the active filter is extremely accurate and eliminates all of the pulses shown on the OSSD signal, unlike the passive filter, where the pulses are still slightly noticeable.
+
+
+
+Adding the power dissipation of each component, it becomes: 19.46mW. This is much larger than the passive filter, by almost 9 times the power used due to the active components being used. 
+
+After both iterations, we created an evaluation table to summarise our findings and make the most effective and efficient decision.
+
+Evaluation Table
+
+
+First-Order Passive Low Pass Filter
+Sallen-Key Active Low-Pass Filter
+Stability
+Slight fluctuations
+No fluctuations at all
+Components required
+Resistor + Capacitor
+2 Resistors, 2 Capacitors and 1 Op-Amp
+Cost and Space
+Low and minimal
+Higher cost + more space
+Power Dissipation
+2.144mW
+19.46mW
+
+
+For our use case, we decided to go with the First-order Passive Low-Pass Filter. Although the signal is attenuated, it would not affect our final desired signal, as it will eventually pass through a voltage regulator, making it unnecessary to replicate the signal to such a great degree. 
+
+In addition, the power dissipation of the active filter was undesirable. As the machine will be running for long periods of time, this large difference can snowball and lead to larger costs over time. We also planned to have a voltage follower before the filter, as during our testing of the STR1 switch, any distortion disabled the device. This made the power usage considerably larger, and would have been additionally bad. We had considered using the op-amp as an attenuator, but we cautioned against it due to its lower input impedance compared to a voltage follower, which may introduce noise and disable the device.
+Switching System
+
+Based on our research, we investigated both solutions as they both had considerable pros and built on the low-pass filter for this process.
+
+
+MOSFETs
+
+Figure 3.?
+
+Using this circuit, we added the MOSFET such that if the filtered voltage was HIGH, current would go through the second circuit, and if it was LOW, it would not go through the circuit. This output voltage was monitored on the oscilloscope XSC1 as shown below:
+
+
+Figure 3.?
+The logic levels provided and functionality fit our design requirements. However, there was a noticeable issue with the rising and falling edges, where it would not be a sharp edge as required.
+
+Figure 3.?
+
+In Figure 3.?, we used a 100us/Div timescale and a 5V/div vertical scale. This could present an issue when it comes to the arcade machine’s operation as it was not a sharp edge but rather a linear increase and linear drop.
+
+
+
+Using the power probes, we found the total power use of the circuit, and it came out to a total of 6.26uW when rounded to 3 significant figures. This low power usage is due to the operation being voltage-dependent and not current dependent, and thus, following the formula for power: P=I2R, the power usage would be low. This makes the MOSFET a power-effective solution.
+
+
+Electromechanical Relay
+
+Once again, we built on top of the passive low-pass filter we designed:
+
+Figure 3.?
+
+We leveraged an SPDT relay and monitored its output on the oscilloscope once again:
+
+Figure 3.?
+
+Based on this, the llogic levels provided and functionality fit our design requirements. However, there was a noticeable issue with the rising and falling edges, where it would not be a sharp edge as required. In real life, there would also be switch bounce observed as pointed out in section B2. The sharp edge could be created if a debounce circuit were used as the output of a debounce circuit would be a clean HIGH or LOW.
+
+Next, we measured the power usage:
+
+Figure 3.?
+
+When the switch is open and no current flows through the relay, it consumes 60.8nW, which is 103 times less than the MOSFET. However, when the switch is closed and current flows through the relay, it consumes 304mW, which is 48,500x more than the MOSFET. This makes the relay a much less power-effective switch than the MOSFET when a credit is added.
+
+
+After both iterations, we created an evaluation table to summarise our findings and make the most effective and efficient decision.
+
+Evaluation Table
+
+
+MOSFET
+Electromechanical Relay
+Clean rising/falling edges
+Clean, takes a few microseconds
+Clean, requires debouncing
+Fail-safe behaviour
+May not have defined mechanical states
+Normally Open and Normally Closed terminals ensure defined states
+Electrical Isolation
+No
+Yes
+Power Dissipation
+6.26uW max
+304mW max
+
+
+
+After review, we decided to go with the Electromechanical Relay. As our arcade machine’s main priority was on safety, the electrical isolation and fail-safe behaviour of the relay offered significant pros even despite the power dissipation being higher. This could allow any potential short circuits or unexpected issues to be troubleshooted quickly and minimise a domino effect of issues being carried over from device to device. Throughout our testing, this proved to be a large issue when it came to noise and grounding. When one device’s ground was improperly connected, it would affect the entire circuit, with random noise causing other device’s to function in unintended ways. Thus, despite the MOSFET’s power effectiveness, we stuck to the relay.
+Debouncing System
+
+Following our decision to stick with the relay, switch bouncing became a priority to get rid of, and we explored the two solutions we found:
+Set-Reset Latch
+Schmitt Trigger
+
+Set-Reset Latch
+
+Figure 3.?
+
+Using this circuit, we used a 2-input NOR gate IC (74LS02) to simulate our SR-latch. On the oscilloscope, we had the following output:
+
+Figure 3.?
+
+Given this output, when the relay is at its Normally Open state, it provides a logic level HIGH with 5V, and a logic level LOW with 0V. This shows that the SR-Latch works as intended and would serve its purpose as a debouncer, with sharp edges observed on the falling and rising of the signal as well.
+
+Next, we attempted to measure the power. However, it was not possible to be done on Multisim as the simulator did not have analog ICs available, and thus, no power readings were generated. So, we turned to its datasheet, and made the following calculations based on its specifications:
+
+Figure 3.?
+From Figure 3.?, we focused on 2 specific parameters: 1. Supply Current when all inputs HIGH (ICCH), and Supply Current when all inputs are LOW (ICCL) and took its average:
+ICC (avg)=ICCH+ICCL2
+ICC (avg) = 3.2+5.42=4.3mA
+
+Taking the average current, we calculated the power to be:
+P=VI
+P=5  (4.310-3) = 21.5mW
+
+With an average power consumption of 21.5mW, the SR-latch did not have a large power consumption.
+
+
+Schmitt Trigger
+
+Figure 3.?
+
+In Figure 3.?, the op-amp was configured as a Schmitt trigger to provide stable switching with shifted voltage levels. As the op-amp does not function as an ideal op-amp with a HIGH of 5V, instead a HIGH of 3.5V, the shifted voltage levels ensure that the midpoint is adjusted to be between 3.5V and 0V instead. On the right side of the circuit, R3 and R4 form a fixed reference voltage of 1.25V, which is what defines the middle of the HIGH and LOW logic signals. On the left side, resistors R1 and R2 form another voltage divider, producing an input signal that simulates the relay output voltage. Lastly, the hysteresis network is created by resistors R5 and R6, which connect the op-amp output and the non-inverting input. This creates a feedback loop that changes the threshold voltage dynamically. When the output is HIGH, the threshold increases, and when the output is LOW, the threshold decreases.
+
+
+On the oscilloscope, we had the following output:
+
+Figure 3.?
+When the switch is closed, the output is HIGH at 3.5V and when the switch is open the output is LOW and 0V. This shows that the op-amp configured as a schmitt trigger works well and can be used with an SPST switch.
+
+In terms of power consumption, we had the following readings:
+
+Figure 3.?
+
+On average, the circuit required 102mW.
+After both iterations, we created an evaluation table to summarise our findings and make the best decision.
+
+Evaluation Table
+
+
+Set-Reset Latch
+Schmitt Trigger
+Switch Required
+SPDT or two complementary signals
+SPST/SPDT/DPST/etc, all possible
+Complexity
+Single IC
+Single IC, few resistors
+Power Dissipation
+21.5mW
+102mW
+
+
+After much deliberation, we felt that both solutions were equal in usefulness. However, for our final circuit, we decided to go with the Schmitt Trigger. This was due to the final relay being an SPST switch as it was SICK’s relay. In addition, this configuration is more commonly aligned and used as a debouncing solution for all types of switches. However, in section B4, we document our progress in experimenting with the Set-Reset Latch as well. This was due to the relay being used at the time being the SPDT relay commonly found in our electronic lab.
+
+
+B3.4 Iteration of Potential Solutions to Replace Scoring System (pressure sensor thing)
+Sensor Signal Conversion
+
+
+
+
+B4 Development Process
+B4.1 Replacing the Arcade Machine’s Existing Optical and Inductive sensors with SICK equivalent sensors
+TBD
+B4.2 Replacing Coin Slot Feature with RFID Switch STR1
+B4.2.1 Proposed Solution
+Block Diagram
+
+Figure 4.?
+The safety switch is used to replace the coin slot, allowing users to add credits by sliding the safety switch to send a falling-edge to the arcade machine instead. The safety lock and safety switches are connected in series through a T-connector. This way, if the safety lock is not properly locked, users are not able to insert a credit to play the arcade machine.
+B4.2.2 Coin System Development Process
+
+Throughout our coin system development process, we broke down our testing into the 3 systems: The Filtering Subsystem, Switching Subsystem, and Debouncing Subsystem. We built each part before working on the next. This section documents this process:
+
+OSSD Signal Filter
+
+
+Figure 4.?
+In our first iteration of the circuit, we carried over the various subsystems that we created in section B3.3.1:
+A voltage follower to maintain the OSSD signal before filtering it so that the sensor does not turn off due to the safety signalling from the OSSD.
+The low-pass passive filter, built using a 2kΩ resistor and a 10uF capacitor, to filter the pulsing from the OSSD signal and produce a stable HIGH. 
+LM7805 5V voltage regulators, which regulates higher voltages down to 5V
+
+The voltage regulators were required to provide a safe 5V power supply to the NOT gate to invert the OSSD signal’s active LOW to an active HIGH, as well as step down the signal from 22.6V to ensure to not overload the NOT gate IC. With our option of switching device eventually becoming the electromechanical relay, the signal being 5V was additionally required as it would power the coil within, which only took a maximum of 5V as well.
+
+Observations:
+The signal was successfully filtered and inverted.
+The signal had a lot of noise, which we suspect was a result of the breadboard and crocodile clip connections being loose.
+There was a significant power dissipation across the voltage regulator due to the step-down from 24V to 5V, as well as the signal being stepped down from 22.6V to 5V.
+
+Thus, after making these observations, we aimed to work on reducing these issues, as well as integrating the switching system.
+
+Integration of FlexLock and STR1 into token system
+
+We aimed to make the FlexLock control whether the STR1 is able to send a signal to the arcade machine to add credits. We hoped to achieve the following logic:
+
+Truth Table
+Lock
+Token
+Credits
+0
+0
+0
+0
+1
+0
+1
+0
+0
+1
+1
+1
+
+
+In the truth table above, the states represent the following:
+
+
+
+flexLock
+Token
+Credits
+0
+Unlocked
+Actuator not in contact
+Credits not added
+1
+Locked
+Actuator in contact
+Credits added
+
+
+This given truth table demonstrates the design we hoped to achieve, in which when the door of the arcade machine was open (the lock was unlocked), and thus was unsafe to play, the token system would disable. The token system would only function under the condition that the door was closed (the lock was locked) and a token was added.
+
+Circuit Diagram and Picture
+
+
+Figure 4.?
+In this circuit we:
+SPDT relay connected to the signal output of the OSSD filter
+Output of SPDT poles connected to pull-down resistors
+Added SR-Latch to remove switch debouncing
+Cleaned up wiring to attempt to reduce noise
+
+On the breadboard, as we were doing testing, we used a direct 5V supply from the PSU rather than a regulated supply as shown on the circuit diagram.
+
+Observations:
+The power dissipation was still large due to 2 voltage regulators
+The signal still had a lot of noise.
+The circuit had the expected output under all 4 test cases of the truth table
+There rising and falling edges of the relay were clean as shown in Figure 4.?:
+
+Figure 4.?
+
+
+After numerous tests and diagnoses, we pinpointed that all components and wiring were done correctly. Thus, we decided that it was best to move away from the breadboard and move to a more permanent and stable solution and create our circuit on a soldered PCB if we were to get rid of the noise we were encountering. 
+
+As all three subsystems were now fully integrated, we tackled the inefficiencies of our circuit and refined our final product:
+
+
+Refinement of circuitry
+
+The main issues our circuit faced was:
+Power dissipation was large due to voltage regulators
+The signal would encounter noise due to grounding issues and improper connections
+Troubleshooting became complicated as there were numerous connections from the PSU to the circuit, and additional jumper wires that were between points that could have been the issue.
+The locking mechanism of the flexLock was undefined, and had to be manually done through direct connection to the PSU.
+
+To tackle these issues, we went through multiple iterations:
+
+Iteration 1
+
+Figure 4.?
+
+Changes:
+The circuit was moved to a prototype PCB
+Wiring was cleaned up and shortened
+Grounding was changed from cascading to star grounding, by physically connecting the grounds of each module to a singular point connected to the ground of the PSU
+
+By utilising star grounding, our ground connections would look like the figure to the left:
+
+Figure 4.?
+
+This will ensure that all connected modules have the same voltage potential and have a clean signal line. This is because noise that may be generated by a component does not get carried forward to another one. This can be seen when grounds are cascaded as shown in the diagram to the right, in which noise may snowball and affect each circuit. After testing, we made the following observations:
+The signal line was much cleaner, with sharp edges and barely any noise detected on the output
+The power dissipation was still large due to the 5V voltage regulators
+
+After these promising results, we moved onto the next iteration.
+
+Iteration 2
+
+
+Figure 4.?
+
+Changes:
+The 24V to 5V supply voltage regulator was removed, and instead used a 5V supply directly from the motherboard of the arcade machine
+The remaining voltage regulator was fit with a heatsink, increasing the surface area for heat to be released into the air rather than remaining in the component
+
+Observations:
+Power dissipation was much lower
+Circuit worked as expected
+Replacement of components was difficult if they broke, such as the LM358 of the voltage follower
+
+
+Moving forward with iteration 3, we hoped to make it more modular.
+
+
+Iteration 3
+
+Figure 4.?
+With this iteration, we added an IC socket. This prevents direct heat from soldering, which could prevent heat from damaging the IC, given that we work with temperatures up to 350℃. For example, the LM358 can only handle ambient temperatures up to 85℃ only. In addition, this made our circuit modular and made it much easier to replace important components.
+
+
+
+Iteration 4
+
+After these iterations, we had to tackle one final issue: implementing a locking mechanism. We decided that the key would be an STR1. If the key (actuator) was next to the sensor, it would act as a key to unlock the flexLock and allow the door to open. The coin slot would also stop accepting any swipes and no credits will be added. This required the use of a new system altogether. This is where the series connection using a T-piece comes in:pls talk about how in research we talked about the t-connector
+
+Figure 4.?
+
+
+
+
+<change of function cos now u need a key to open the lock which we did not have at first cos we had manual lock/unlock, so now str1 did it. Therefore we went to T-connect and we created a new idea for the locking.>
+
+
+Iteration 5
+
+After implementing the new series connection with the T-piece, we decided to
+
+
+
+
+Signal Flow
+Circuit Diagram of Final Solution
+
+XSC1 as the arcade machine coin slot input
+
+Truth Table
+STR1.1 (key
+FlexLock (lock
+STR1.2 (Token
+Output
+0
+0
+0
+0
+0
+0
+1
+0
+0
+1
+0
+0
+0
+1
+1
+0
+1
+0
+0
+0
+1
+0
+1
+0
+1
+1
+0
+0
+1
+1
+1
+1
+
+STR1 detects tag → 1, a HIGH signal with pulsing
+STR1 does not detect tag → 0, a LOW signal
+FlexLock is locked → 1, a HIGH signal with pulsing
+FlexLock is unlocked → 0, a LOW signal
+
+Signal Flow
+Since the OSSD signal has a safety signalling system, a voltage follower is needed to maintain the original signal for the STR1 and FlexLock to compare against their second OSSD output. The signal then goes through a filter since a stable signal and a clear falling-edge is required to count 1 credit, and the OSSD signal is pulsing and does not give a stable HIGH, which the arcade machine may count as a falling-edge. The signal is then stepped-down through a LM7805 voltage regulator to pull down the voltage before it goes through the electromechanical relay to control an external circuit which sends a signal to the arcade machine to add credits. An SR-latch is added to the external circuit to debounce contact bounce from the electromechanical relay and to invert the signal, providing the falling-edge.
+B4.2.3 Mounting of sensors
+Safety switch actuator mount
+To utilise the safety switch, the actuator has to be mounted onto the door of the arcade machine. To do this, computer-aided design (CAD) and 3D printing were utilised to create this bracket. 
+
+Test 1
+
+First test piece printed. 
+
+Primary plate (vertical) has holes measured from the safety switch actuator itself.
+
+Secondary plate (horizontal) was made from scratch.
+Test 2
+
+Improvement:
+Secondary plate reduced thickness to ensure actuator locks onto safety switch properly.
+
+
+Test 3
+
+Improvements:
+Primary plate was made thinner just in case for clearance of screws and nuts.
+Secondary plate was made thinner again to ensure actuator locks onto safety switch properly.
+Final
+
+Improvement:
+1. Increased thickness at the sides to increase structural integrity while still having enough space for actuator to mount.
+
+
+
+RFID Coin Slot Mount
+In order to replace the original coin slot mechanism with the RFID system, we had to replace and fill up the space where the original coin slot was. CAD and 3D printing were utilised to create a new slot that will be fixed in where the original coin slot was using the original hardware. 
+Test
+
+A test piece used as a benchmark in place for the original mechanism
+Final
+
+Improvements made:
+Plate was slightly widened so that mount can be recessed into hole properly
+Added the actual mount for the RFID, which is inserted from the rear and will be held down with screws and nuts. 
+
+
+
+B4.2.6 Validation and Test Plan
+Test Plan:
+Connect the output signal of SR-latch to an oscilloscope to see if the output follows the truth table and provides a stable signal.
+Connect the output signal of SR-latch to see if arcade machine is able to count credits using the STR1
+Test Outcome
+
+
+
+
