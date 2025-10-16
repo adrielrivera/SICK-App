@@ -8,7 +8,7 @@ import sys
 from threading import Thread, Lock
 from collections import deque
 import serial
-import pigpio
+# import pigpio  # No longer needed - using Arduino GPIO control
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 from config import *
@@ -27,11 +27,8 @@ time_buffer = deque(maxlen=BUFFER_SIZE)
 ser = None
 serial_running = False
 
-# GPIO connection
-pi = None
-# Arcade interface pins
-GPIO_PIN6 = 6  # Active HIGH (normally LOW) - Press START signal
-GPIO_PIN5 = 5  # Active LOW (normally HIGH) - Press ACTIVE signal
+# GPIO control now handled by Arduino via Serial commands
+# No Pi GPIO needed - Arduino controls arcade motherboard pins directly
 
 # Statistics
 baseline = 0.0
@@ -75,37 +72,51 @@ def map_linear_inverse(x, x0, x1, y0, y1):
     return y1 - t * (y1 - y0)  # Inverted: subtract instead of add
 
 
-def arcade_button_press(pi, pin5, pin6, duration_ms):
+def arcade_button_press(ser, duration_ms):
     """
-    Arcade button press protocol for your specific motherboard.
+    Arcade button press protocol using Arduino GPIO control.
     
-    Pin 6: Active HIGH (normally LOW) - Press start signal
-    Pin 5: Active LOW (normally HIGH) - Press confirmation signal
+    Sends commands to Arduino which controls the arcade motherboard pins.
+    Arduino Pin 6: Active HIGH (normally LOW) - Press start signal
+    Arduino Pin 5: Active LOW (normally HIGH) - Press confirmation signal
     
     Sequence:
-    1. Pin 6 goes HIGH (press start)
+    1. Send PIN6_HIGH command to Arduino
     2. Wait for duration_ms (THE PULSE - arcade measures this gap)
-    3. Pin 5 goes LOW (press confirmed)
-    4. (Rest can be cleanup/reset)
+    3. Send PIN5_LOW command to Arduino
+    4. Hold active state, then reset
     
     The arcade measures the time between Pin 6↑ and Pin 5↓
     """
-    # Step 1: Pin 6 HIGH (press start signal)
-    pi.write(pin6, 1)
-    
-    # Step 2: Wait for the mapped duration
-    # This is THE PULSE that arcade measures (Pin 6 HIGH to Pin 5 LOW)
-    time.sleep(duration_ms / 1000.0)
-    
-    # Step 3: Pin 5 LOW (press confirmed)
-    pi.write(pin5, 0)
-    
-    # Step 4: Hold active state longer (cleanup)
-    time.sleep(0.100)  # 100ms hold (pins stay active longer)
-    
-    # Step 5: Reset both pins to idle state
-    pi.write(pin5, 1)  # Pin 5 back to HIGH
-    pi.write(pin6, 0)  # Pin 6 back to LOW
+    try:
+        # Step 1: Pin 6 HIGH (press start signal) - 5V output from Arduino
+        ser.write(b"PIN6_HIGH\n")
+        ser.flush()  # Ensure command is sent immediately
+        
+        # Step 2: Wait for the mapped duration
+        # This is THE PULSE that arcade measures (Pin 6 HIGH to Pin 5 LOW)
+        time.sleep(duration_ms / 1000.0)
+        
+        # Step 3: Pin 5 LOW (press confirmed) - 0V output from Arduino
+        ser.write(b"PIN5_LOW\n")
+        ser.flush()  # Ensure command is sent immediately
+        
+        # Step 4: Hold active state longer (cleanup)
+        time.sleep(0.100)  # 100ms hold (pins stay active longer)
+        
+        # Step 5: Reset both pins to idle state
+        ser.write(b"PIN5_HIGH\n")  # Pin 5 back to HIGH (5V)
+        ser.write(b"PIN6_LOW\n")   # Pin 6 back to LOW (0V)
+        ser.flush()  # Ensure commands are sent
+        
+    except Exception as e:
+        print(f"Error in arcade_button_press: {e}")
+        # Try to reset GPIO on error
+        try:
+            ser.write(b"RESET_GPIO\n")
+            ser.flush()
+        except:
+            pass
 
 
 def read_one_int(ser):
@@ -125,26 +136,10 @@ def serial_reader_thread():
     Also handles GPIO pulse generation based on detected peaks.
     """
     global ser, serial_running, baseline, envelope, sample_count
-    global pi, armed, peak, cap_end, pulse_count
+    global armed, peak, cap_end, pulse_count
     
-    print("Initializing pigpio daemon connection...")
-    pi = pigpio.pi()
-    if not pi.connected:
-        print("WARNING: pigpio daemon not running. GPIO pulses disabled.", file=sys.stderr)
-        print("Run: sudo systemctl start pigpiod", file=sys.stderr)
-        pi = None
-    else:
-        # Initialize arcade interface pins
-        pi.set_mode(GPIO_PIN6, pigpio.OUTPUT)
-        pi.set_mode(GPIO_PIN5, pigpio.OUTPUT)
-        
-        # Set default states
-        pi.write(GPIO_PIN6, 0)  # Pin 6 normally LOW
-        pi.write(GPIO_PIN5, 1)  # Pin 5 normally HIGH
-        
-        print(f"GPIO Pins initialized for arcade interface:")
-        print(f"  Pin 6 (BCM {GPIO_PIN6}): Active HIGH - Press START (default: LOW)")
-        print(f"  Pin 5 (BCM {GPIO_PIN5}): Active LOW - Press ACTIVE (default: HIGH)")
+    print("GPIO control now handled by Arduino - no Pi GPIO needed!")
+    print("Arduino will control arcade motherboard pins via Serial commands.")
     
     print("Initializing serial connection...")
     try:
@@ -154,8 +149,6 @@ def serial_reader_thread():
     except Exception as e:
         print(f"ERROR: Could not open serial port {SERIAL_PORT}: {e}", file=sys.stderr)
         serial_running = False
-        if pi:
-            pi.stop()
         return
     
     # Quick baseline warm-up (200 ms)
@@ -204,63 +197,62 @@ def serial_reader_thread():
         batch_time.append(current_time)
         
         # ============================================================
-        # GPIO PULSE GENERATION LOGIC (from pbt_pulse_plot.py)
+        # GPIO PULSE GENERATION LOGIC (Arduino GPIO control)
         # ============================================================
-        if pi:
-            now = time.time()
+        now = time.time()
+        
+        if armed:
+            # Check for trigger
+            if envelope > TRIGGER_THRESHOLD:
+                armed = False
+                peak = envelope
+                cap_end = now + (CAPTURE_MS / 1000.0)
+        else:
+            # Capture peak during capture window
+            if envelope > peak:
+                peak = envelope
             
-            if armed:
-                # Check for trigger
-                if envelope > TRIGGER_THRESHOLD:
-                    armed = False
-                    peak = envelope
-                    cap_end = now + (CAPTURE_MS / 1000.0)
-            else:
-                # Capture peak during capture window
-                if envelope > peak:
-                    peak = envelope
+            # Check if capture window ended or envelope dropped
+            if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
+                # Map amplitude to pulse width INVERSELY
+                # High peak → Short pulse (strong hit = quick button press)
+                # Low peak → Long pulse (weak hit = slow button press)
+                a_clamped = clamp(peak, A_MIN, A_MAX)
+                width_ms = clamp(
+                    map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
+                    W_MIN_MS, W_MAX_MS
+                )
                 
-                # Check if capture window ended or envelope dropped
-                if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
-                    # Map amplitude to pulse width INVERSELY
-                    # High peak → Short pulse (strong hit = quick button press)
-                    # Low peak → Long pulse (weak hit = slow button press)
-                    a_clamped = clamp(peak, A_MIN, A_MAX)
-                    width_ms = clamp(
-                        map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
-                        W_MIN_MS, W_MAX_MS
-                    )
-                    
-                    pulse_count += 1
-                    print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
-                    
-                    # Generate arcade button press using dual-pin protocol
-                    arcade_button_press(pi, GPIO_PIN5, GPIO_PIN6, width_ms)
-                    
-                    # Refractory period
-                    t_ref_end = time.time() + (REFRACTORY_MS / 1000.0)
-                    while time.time() < t_ref_end:
-                        v2 = read_one_int(ser)
-                        if v2 is None:
-                            continue
-                        sample_count += 1
-                        baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v2
-                        xmag = abs(v2 - baseline)
-                        envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
-                    
-                    # Wait to re-arm until envelope falls below REARM_LEVEL
-                    while True:
-                        if envelope < REARM_LEVEL:
-                            armed = True
-                            break
-                        v3 = read_one_int(ser)
-                        if v3 is None:
-                            time.sleep(0.001)
-                            continue
-                        sample_count += 1
-                        baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v3
-                        xmag = abs(v3 - baseline)
-                        envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
+                pulse_count += 1
+                print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
+                
+                # Generate arcade button press using Arduino GPIO control
+                arcade_button_press(ser, width_ms)
+                
+                # Refractory period
+                t_ref_end = time.time() + (REFRACTORY_MS / 1000.0)
+                while time.time() < t_ref_end:
+                    v2 = read_one_int(ser)
+                    if v2 is None:
+                        continue
+                    sample_count += 1
+                    baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v2
+                    xmag = abs(v2 - baseline)
+                    envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
+                
+                # Wait to re-arm until envelope falls below REARM_LEVEL
+                while True:
+                    if envelope < REARM_LEVEL:
+                        armed = True
+                        break
+                    v3 = read_one_int(ser)
+                    if v3 is None:
+                        time.sleep(0.001)
+                        continue
+                    sample_count += 1
+                    baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v3
+                    xmag = abs(v3 - baseline)
+                    envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
         
         # ============================================================
         # EMIT DATA TO WEB CLIENTS
@@ -290,11 +282,13 @@ def serial_reader_thread():
     # Cleanup
     if ser:
         ser.close()
-    if pi:
-        # Reset arcade interface pins to idle state
-        pi.write(GPIO_PIN6, 0)  # Pin 6 back to LOW
-        pi.write(GPIO_PIN5, 1)  # Pin 5 back to HIGH
-        pi.stop()
+    # Send reset command to Arduino to reset GPIO pins
+    try:
+        if ser and not ser.closed:
+            ser.write(b"RESET_GPIO\n")
+            ser.flush()
+    except:
+        pass
     print("Serial reader thread stopped")
 
 
@@ -350,13 +344,13 @@ def start_serial_thread():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("SICK PBT Sensor - Arcade Interface + Web Visualization")
+    print("SICK PBT Sensor - Arduino GPIO Control + Web Visualization")
     print("=" * 60)
     print(f"Serial port: {SERIAL_PORT} @ {BAUD} baud")
     print(f"Samples per second: {SAMPLES_PER_SEC}")
-    print(f"Arcade Interface:")
-    print(f"  Pin 6 (BCM {GPIO_PIN6}): Press START signal (Active HIGH)")
-    print(f"  Pin 5 (BCM {GPIO_PIN5}): Press ACTIVE signal (Active LOW)")
+    print(f"Arcade Interface (Arduino GPIO):")
+    print(f"  Arduino Pin 6: Press START signal (Active HIGH, 5V output)")
+    print(f"  Arduino Pin 5: Press ACTIVE signal (Active LOW, 0V output)")
     print(f"Pulse Mapping: HIGH peak → SHORT pulse (INVERTED)")
     print(f"Trigger threshold: {TRIGGER_THRESHOLD} ADC counts")
     print(f"Web server: http://{HOST}:{PORT}")
@@ -374,9 +368,11 @@ if __name__ == '__main__':
         serial_running = False
         if ser:
             ser.close()
-        if pi:
-            # Reset arcade interface pins to default states
-            pi.write(GPIO_PIN6, 0)  # Pin 6 back to LOW
-            pi.write(GPIO_PIN5, 1)  # Pin 5 back to HIGH
-            pi.stop()
+        # Send reset command to Arduino to reset GPIO pins
+        try:
+            if ser and not ser.closed:
+                ser.write(b"RESET_GPIO\n")
+                ser.flush()
+        except:
+            pass
 
