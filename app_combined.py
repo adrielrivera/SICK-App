@@ -46,7 +46,7 @@ cap_end = 0.0
 # GPIO pulse parameters (from pbt_pulse_plot.py)
 CAPTURE_MS = 250
 REFRACTORY_MS = 200
-A_MIN, A_MAX = 60, 100
+A_MIN, A_MAX = 60, 85
 W_MIN_MS, W_MAX_MS = 10, 1500
 REARM_LEVEL = TRIGGER_THRESHOLD * 0.4
 
