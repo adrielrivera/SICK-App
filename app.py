@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SICK Capstone - PBT Sensor Web App
+SICK7 - PBT Sensor Web App
 Real-time waveform visualization
 """
 import time

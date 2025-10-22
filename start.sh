@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# SICK PBT Sensor Web App - Start Script
+# SICK7 Web App - Start Script
 # This script starts the Flask web application
 
 echo "=========================================="
-echo "   SICK PBT Sensor Web App"
+echo "   SICK7 Web App"
 echo "=========================================="
 echo ""
 

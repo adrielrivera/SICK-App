@@ -1,5 +1,5 @@
 [Unit]
-Description=SICK PBT Sensor Web App
+Description=SICK7 PBT Sensor Web App
 After=network.target
 
 [Service]

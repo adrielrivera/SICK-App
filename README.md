@@ -1,6 +1,6 @@
-# SICK Capstone - PBT Sensor Web App
+# SICK7 - PBT Sensor Web App
 
-A real-time web application for visualizing PBT (Plastic Scintillator with Photomultiplier Tube) sensor waveforms from the SICK capstone project.
+A real-time web application for visualizing PBT (Piezoelectric) sensor waveforms and controlling arcade machine scoring systems.
 
 ## Features
 

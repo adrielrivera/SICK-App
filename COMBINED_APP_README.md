@@ -198,5 +198,5 @@ Possible additions:
 
 ## License
 
-Part of SICK Capstone Project
+Part of SICK7 Project
 

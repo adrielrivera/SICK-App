@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SICK Capstone - Combined PBT Sensor Web App with GPIO Pulse Output
+SICK7 - Combined PBT Sensor Web App with GPIO Pulse Output
 Real-time waveform visualization + GPIO pulse generation
 """
 import time
@@ -345,7 +345,7 @@ def start_serial_thread():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("SICK PBT Sensor - Arduino GPIO Control + Web Visualization")
+    print("SICK7 - Arduino GPIO Control + Web Visualization")
     print("=" * 60)
     print(f"Serial port: {SERIAL_PORT} @ {BAUD} baud")
     print(f"Samples per second: {SAMPLES_PER_SEC}")

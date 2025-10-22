@@ -278,7 +278,7 @@ with open('data.csv', 'a') as f:
 
 ## License & Credits
 
-**Project**: SICK Capstone  
+**Project**: SICK7  
 **Author**: Adriel Rivera  
 **Framework**: Flask + Socket.IO + Chart.js  
 **Hardware**: Arduino + Raspberry Pi  

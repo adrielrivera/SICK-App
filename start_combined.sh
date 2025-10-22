@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start the combined SICK PBT Sensor app with web interface and GPIO pulse output
+# Start the combined SICK7 app with web interface and GPIO pulse output
 
 # Activate virtual environment if it exists
 if [ -d "venv" ]; then
@@ -27,6 +27,6 @@ if ! systemctl is-active --quiet pigpiod; then
 fi
 
 # Run the combined app
-echo "Starting SICK PBT Combined App..."
+echo "Starting SICK7 App..."
 python3 app_combined.py
 
