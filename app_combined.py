@@ -227,6 +227,14 @@ def serial_reader_thread():
                 print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
                 print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
                 
+                # Send PBT hit notification to Arduino for credit tracking
+                try:
+                    ser.write(b"PBT_HIT\n")
+                    ser.flush()
+                    print("  PBT_HIT sent to Arduino for credit tracking")
+                except Exception as e:
+                    print(f"  Error sending PBT_HIT: {e}")
+                
                 # Generate arcade button press using Arduino GPIO control
                 arcade_button_press(ser, width_ms)
                 
