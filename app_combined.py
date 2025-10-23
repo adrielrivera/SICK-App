@@ -130,6 +130,17 @@ def read_one_int(ser):
         return None
 
 
+def read_arduino_messages(ser):
+    """Read and display Arduino status messages."""
+    try:
+        while ser.in_waiting > 0:
+            line = ser.readline().decode(errors="ignore").strip()
+            if line and line.startswith("#"):
+                print(f"  Arduino: {line}")
+    except Exception as e:
+        pass  # Ignore serial read errors
+
+
 def serial_reader_thread():
     """
     Background thread to read serial data and update buffers.
@@ -197,6 +208,11 @@ def serial_reader_thread():
         batch_time.append(current_time)
         
         # ============================================================
+        # READ ARDUINO MESSAGES (Credit tracking, status updates)
+        # ============================================================
+        read_arduino_messages(ser)
+        
+        # ============================================================
         # GPIO PULSE GENERATION LOGIC (Arduino GPIO control)
         # ============================================================
         now = time.time()
@@ -234,6 +250,13 @@ def serial_reader_thread():
                     print("  PBT_HIT sent to Arduino for credit tracking")
                 except Exception as e:
                     print(f"  Error sending PBT_HIT: {e}")
+                
+                # Request credit status from Arduino
+                try:
+                    ser.write(b"STATUS\n")
+                    ser.flush()
+                except Exception as e:
+                    print(f"  Error requesting status: {e}")
                 
                 # Generate arcade button press using Arduino GPIO control
                 arcade_button_press(ser, width_ms)
