@@ -1,6 +1,10 @@
 // WebSocket connection
 const socket = io();
 
+// Safety system variables
+let safetyStatus = 'safe'; // 'safe' or 'danger'
+let gameEnabled = true;
+
 // Chart configuration
 let chart;
 let isPaused = false;
@@ -95,6 +99,30 @@ function initChart() {
             }
         }
     });
+}
+
+// Safety system functions
+function updateSafetyStatus(status) {
+    safetyStatus = status;
+    const safetyDot = document.getElementById('safety-dot');
+    const safetyText = document.getElementById('safety-text');
+    const safetyMessage = document.getElementById('safety-message');
+    
+    if (status === 'danger') {
+        safetyDot.className = 'safety-dot danger';
+        safetyText.textContent = 'DANGER - Person Detected';
+        safetyText.className = 'safety-text danger';
+        safetyMessage.innerHTML = '<p><strong>⚠️ SAFETY ALERT:</strong> Person detected in safety zone. Game is disabled for safety.</p>';
+        safetyMessage.className = 'safety-message danger';
+        gameEnabled = false;
+    } else {
+        safetyDot.className = 'safety-dot';
+        safetyText.textContent = 'SAFE - Game Ready';
+        safetyText.className = 'safety-text safe';
+        safetyMessage.innerHTML = '<p>System is ready for gameplay. Hit the PBT sensor to score points!</p>';
+        safetyMessage.className = 'safety-message';
+        gameEnabled = true;
+    }
 }
 
 // Update chart with new data
@@ -198,6 +226,13 @@ socket.on('sensor_data', (data) => {
     }
 });
 
+// Safety system WebSocket events
+socket.on('safety_status', (data) => {
+    updateSafetyStatus(data.status);
+    gameEnabled = data.game_enabled;
+    console.log('Safety status updated:', data);
+});
+
 // Control buttons
 document.getElementById('pause-btn').addEventListener('click', function() {
     isPaused = !isPaused;
@@ -224,6 +259,23 @@ document.getElementById('clear-btn').addEventListener('click', function() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
+    
+    // Safety system test buttons
+    const testPersonBtn = document.getElementById('test-person-btn');
+    const testClearBtn = document.getElementById('test-clear-btn');
+    
+    testPersonBtn.addEventListener('click', function() {
+        updateSafetyStatus('danger');
+        socket.emit('test_person_detected');
+        console.log('Test: Person detected - Game disabled');
+    });
+    
+    testClearBtn.addEventListener('click', function() {
+        updateSafetyStatus('safe');
+        socket.emit('test_area_clear');
+        console.log('Test: Area clear - Game enabled');
+    });
+    
     console.log('PBT Sensor Monitor initialized');
 });
 

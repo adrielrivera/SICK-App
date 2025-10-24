@@ -28,7 +28,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-label">Threshold</div>
-                <div class="stat-value" id="threshold-value">60</div>
+                <div class="stat-value" id="threshold-value">24</div>
                 <div class="stat-unit">ADC counts</div>
             </div>
             <div class="stat-card">
@@ -42,6 +42,22 @@
                     <span class="status-indicator" id="status-dot"></span>
                     <span id="status-text">Connecting...</span>
                 </div>
+            </div>
+        </div>
+
+        <div class="safety-panel">
+            <div class="safety-status">
+                <div class="safety-indicator" id="safety-indicator">
+                    <span class="safety-dot" id="safety-dot"></span>
+                    <span class="safety-text" id="safety-text">SAFE - Game Ready</span>
+                </div>
+                <div class="safety-message" id="safety-message">
+                    <p>System is ready for gameplay. Hit the PBT sensor to score points!</p>
+                </div>
+            </div>
+            <div class="safety-controls">
+                <button id="test-person-btn" class="test-btn">Test: Person Detected</button>
+                <button id="test-clear-btn" class="test-btn">Test: Clear Area</button>
             </div>
         </div>
 

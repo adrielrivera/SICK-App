@@ -8,6 +8,8 @@
     --text-dark: #2c3e50;
     --text-light: #7f8c8d;
     --border-color: #bdc3c7;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
 }
 
 * {
@@ -240,5 +242,111 @@ header h2 {
     #waveformChart {
         height: 300px !important;
     }
+}
+
+/* Safety Panel Styles */
+.safety-panel {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.safety-status {
+    margin-bottom: 15px;
+}
+
+.safety-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.safety-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--success-color);
+    animation: pulse 2s infinite;
+}
+
+.safety-dot.danger {
+    background-color: var(--danger-color);
+    animation: pulse-danger 1s infinite;
+}
+
+.safety-text {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.safety-text.safe {
+    color: var(--success-color);
+}
+
+.safety-text.danger {
+    color: var(--danger-color);
+}
+
+.safety-message {
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #e8f5e8;
+    border-left: 4px solid var(--success-color);
+}
+
+.safety-message.danger {
+    background-color: #f8d7da;
+    border-left-color: var(--danger-color);
+}
+
+.safety-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.test-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+#test-person-btn {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+#test-person-btn:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+}
+
+#test-clear-btn {
+    background-color: var(--success-color);
+    color: white;
+}
+
+#test-clear-btn:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+@keyframes pulse-danger {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
 }
 

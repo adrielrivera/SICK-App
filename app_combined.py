@@ -50,6 +50,9 @@ REARM_LEVEL = TRIGGER_THRESHOLD * 0.4
 # Statistics for pulse generation
 pulse_count = 0
 
+# Safety system
+game_enabled = True
+
 
 def clamp(x, lo, hi):
     """Clamp value between min and max."""
@@ -217,12 +220,15 @@ def serial_reader_thread():
         # ============================================================
         now = time.time()
         
-        if armed:
-            # Check for trigger
+        if armed and game_enabled:
+            # Check for trigger (only if game is enabled)
             if envelope > TRIGGER_THRESHOLD:
                 armed = False
                 peak = envelope
                 cap_end = now + (CAPTURE_MS / 1000.0)
+        elif not game_enabled and envelope > TRIGGER_THRESHOLD:
+            # Safety violation - person detected, don't process hits
+            print(f"SAFETY ALERT: Hit detected but game disabled - Person in safety zone")
         else:
             # Capture peak during capture window
             if envelope > peak:
@@ -272,9 +278,9 @@ def serial_reader_thread():
                     xmag = abs(v2 - baseline)
                     envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
                 
-                # Wait to re-arm until envelope falls below REARM_LEVEL
+                # Wait to re-arm until envelope falls below REARM_LEVEL (only if game enabled)
                 while True:
-                    if envelope < REARM_LEVEL:
+                    if envelope < REARM_LEVEL and game_enabled:
                         armed = True
                         break
                     v3 = read_one_int(ser)
@@ -345,6 +351,12 @@ def handle_connect():
             'threshold': TRIGGER_THRESHOLD,
             'pulse_count': pulse_count
         })
+    
+    # Send initial safety status
+    emit('safety_status', {
+        'status': 'safe' if game_enabled else 'danger',
+        'game_enabled': game_enabled
+    })
 
 
 @socketio.on('disconnect')
@@ -363,6 +375,39 @@ def handle_stats_request():
         'buffer_size': len(raw_buffer),
         'pulse_count': pulse_count
     })
+
+
+@socketio.on('request_safety_status')
+def handle_safety_request():
+    """Send current safety status to client."""
+    emit('safety_status', {
+        'status': 'safe' if game_enabled else 'danger',
+        'game_enabled': game_enabled
+    })
+
+
+@socketio.on('test_person_detected')
+def handle_test_person():
+    """Test function to simulate person detection."""
+    global game_enabled
+    game_enabled = False
+    emit('safety_status', {
+        'status': 'danger',
+        'game_enabled': False
+    })
+    print("Test: Person detected - Game disabled")
+
+
+@socketio.on('test_area_clear')
+def handle_test_clear():
+    """Test function to simulate area clear."""
+    global game_enabled
+    game_enabled = True
+    emit('safety_status', {
+        'status': 'safe',
+        'game_enabled': True
+    })
+    print("Test: Area clear - Game enabled")
 
 
 def start_serial_thread():
