@@ -1,45 +1,74 @@
-Arduino: 1.8.19 (Linux), Board: "Arduino Uno"
+(venv) sst@raspberrypi:~/SICK/SICK-App $ ./start_combined.sh
+Activating virtual environment...
+Starting pigpio daemon...
+Starting SICK7 App...
+============================================================
+SICK7 - Arduino GPIO Control + Web Visualization
+============================================================
+Serial port: /dev/ttyUSB0 @ 115200 baud
+Samples per second: 800
+Arcade Interface (Arduino GPIO):
+  Arduino Pin 6: Press START signal (Active HIGH, 5V output)
+  Arduino Pin 5: Press ACTIVE signal (Active LOW, 0V output)
+Pulse Mapping: HIGH peak → SHORT pulse (INVERTED)
+Peak Range: 24-60 ADC → Pulse Range: 10-100ms
+Trigger threshold: 24 ADC counts
+Web server: http://0.0.0.0:5000
+============================================================
+GPIO control now handled by Arduino - no Pi GPIO needed!
+Arduino will control arcade motherboard pins via Serial commands.
+Initializing serial connection...
+ * Serving Flask app 'app_combined'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.22.147.141:5000
+Press CTRL+C to quit
+DEBUG PBT: Arduino connected on /dev/ttyUSB0 @ 115200 baud
+DEBUG PBT: Testing Arduino connection...
+172.22.145.177 - - [27/Oct/2025 13:21:44] "GET /socket.io/?EIO=4&transport=polling&t=Pea7N_x HTTP/1.1" 200 -
+Client connected
+172.22.145.177 - - [27/Oct/2025 13:21:44] "POST /socket.io/?EIO=4&transport=polling&t=Pea7O0a&sid=3VZs94f3cOuZDTPoAAAA HTTP/1.1" 200 -
+172.22.145.177 - - [27/Oct/2025 13:21:44] "GET /socket.io/?EIO=4&transport=polling&t=Pea7O0d&sid=3VZs94f3cOuZDTPoAAAA HTTP/1.1" 200 -
+172.22.145.177 - - [27/Oct/2025 13:21:44] "GET /socket.io/?EIO=4&transport=polling&t=Pea7O1Q&sid=3VZs94f3cOuZDTPoAAAA HTTP/1.1" 200 -
+172.22.145.177 - - [27/Oct/2025 13:21:44] "POST /socket.io/?EIO=4&transport=polling&t=Pea7O1d&sid=3VZs94f3cOuZDTPoAAAA HTTP/1.1" 200 -
+Baseline calibrated: 40.0 ADC counts
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+DEBUG PBT Arduino: '# BASELINE MEASURED=507 ADC counts (2.48V)'
+  Arduino: # BASELINE MEASURED=507 ADC counts (2.48V)
+DEBUG PBT Arduino: '# WARNING: Baseline outside expected range 350-450'
+  Arduino: # WARNING: Baseline outside expected range 350-450
+DEBUG PBT Arduino: '# READY'
+  Arduino: # READY
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+Pulse #1: Peak=579.1 → 10 ms (INVERTED)
+  Mapping: Peak 579.1 → Pulse 10ms (Range: 24-60 → 10-100ms)
+  PBT_HIT sent to Arduino for credit tracking
+DEBUG PBT Arduino: '# PBT HIT: Received from Pi'
+  Arduino: # PBT HIT: Received from Pi
+172.22.145.177 - - [27/Oct/2025 13:21:47] "GET /socket.io/?EIO=4&transport=polling&t=Pea7Oq4 HTTP/1.1" 200 -
+DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
+  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+Client connected
+172.22.145.177 - - [27/Oct/2025 13:21:47] "POST /socket.io/?EIO=4&transport=polling&t=Pea7Oqo&sid=cCYiCkeekf_REH8CAAAC HTTP/1.1" 200 -
+172.22.145.177 - - [27/Oct/2025 13:21:47] "GET /socket.io/?EIO=4&transport=polling&t=Pea7Oqx&sid=cCYiCkeekf_REH8CAAAC HTTP/1.1" 200 -
+172.22.145.177 - - [27/Oct/2025 13:21:47] "GET /socket.io/?EIO=4&transport=polling&t=Pea7OrT&sid=cCYiCkeekf_REH8CAAAC HTTP/1.1" 200 -
+172.22.145.177 - - [27/Oct/2025 13:21:47] "POST /socket.io/?EIO=4&transport=polling&t=Pea7Orj&sid=cCYiCkeekf_REH8CAAAC HTTP/1.1" 200 -
 
-
-
-
-
-
-
-
-
-
-
-Warning: platform.txt from core 'Arduino AVR Boards' contains deprecated compiler.path={runtime.tools.avr-gcc.path}/bin/, automatically converted to compiler.path=/usr/bin/. Consider upgrading this core.
-/home/sst/SICK/SICK-Capstone/arduino_stuff/unified_system/unified_system.ino: In function ‘void processGPIOCommand(String)’:
-unified_system:287:9: error: ‘safetySystemActive’ was not declared in this scope
-     if (safetySystemActive) {
-         ^
-/home/sst/SICK/SICK-Capstone/arduino_stuff/unified_system/unified_system.ino: In function ‘void updateSafetySystem()’:
-unified_system:312:3: error: ‘safetySystemActive’ was not declared in this scope
-   safetySystemActive = true; // Always active
-   ^
-/home/sst/SICK/SICK-Capstone/arduino_stuff/unified_system/unified_system.ino: In function ‘void runSiren()’:
-unified_system:369:22: error: ‘safetySystemActive’ was not declared in this scope
-   if (sirenActive && safetySystemActive) {
-                      ^
-/home/sst/SICK/SICK-Capstone/arduino_stuff/unified_system/unified_system.ino: In function ‘void printDiagnostics()’:
-unified_system:406:16: error: ‘creditCount’ was not declared in this scope
-   Serial.print(creditCount);
-                ^
-unified_system:408:16: error: ‘pbtHitCount’ was not declared in this scope
-   Serial.print(pbtHitCount);
-                ^
-unified_system:410:16: error: ‘remainingStrikes’ was not declared in this scope
-   Serial.print(remainingStrikes);
-                ^
-unified_system:412:18: error: ‘safetySystemActive’ was not declared in this scope
-   Serial.println(safetySystemActive ? "ACTIVE" : "INACTIVE");
-                  ^
-exit status 1
-‘safetySystemActive’ was not declared in this scope
-
-
-This report would have more information with
-"Show verbose output during compilation"
-option enabled in File -> Preferences.
