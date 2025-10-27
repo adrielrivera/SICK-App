@@ -133,6 +133,11 @@ def read_one_int(ser):
         s = ser.readline().decode(errors="ignore").strip()
         if not s:
             return None
+        
+        # Skip non-numeric data (system messages)
+        if not s.isdigit():
+            return None
+            
         return int(s)
     except (ValueError, UnicodeDecodeError):
         return None
@@ -149,8 +154,12 @@ def read_arduino_messages(ser):
         while ser.in_waiting > 0:
             line = ser.readline().decode(errors="ignore").strip()
             
-            # Debug: Print ALL Arduino messages
-            if line:
+            # Skip raw PBT data (just numbers) - only process system messages
+            if line and line.isdigit():
+                continue  # Skip raw PBT sensor data
+            
+            # Debug: Print only system messages
+            if line and (line.startswith("#") or "TiM" in line or "CREDIT" in line or "PBT_HIT" in line):
                 print(f"DEBUG PBT Arduino: '{line}'")
             
             if line and line.startswith("#"):
@@ -264,6 +273,14 @@ def serial_reader_thread():
     batch_time = []
     
     while serial_running:
+        # ============================================================
+        # READ ARDUINO MESSAGES FIRST (Credit tracking, status updates)
+        # ============================================================
+        read_arduino_messages(ser)
+        
+        # ============================================================
+        # READ RAW PBT DATA (for PBT system)
+        # ============================================================
         v = read_one_int(ser)
         if v is None:
             time.sleep(0.001)
@@ -281,11 +298,6 @@ def serial_reader_thread():
         batch_raw.append(v)
         batch_env.append(envelope)
         batch_time.append(current_time)
-        
-        # ============================================================
-        # READ ARDUINO MESSAGES (Credit tracking, status updates)
-        # ============================================================
-        read_arduino_messages(ser)
         
         # ============================================================
         # GPIO PULSE GENERATION LOGIC (Arduino GPIO control)
