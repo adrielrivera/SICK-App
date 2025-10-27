@@ -142,6 +142,10 @@ def read_arduino_messages(ser):
     """Read and display Arduino status messages."""
     global tim100_detected, tim150_detected
     try:
+        # Debug: Check if there's data waiting
+        if ser.in_waiting > 0:
+            print(f"DEBUG PBT: {ser.in_waiting} bytes waiting from Arduino")
+        
         while ser.in_waiting > 0:
             line = ser.readline().decode(errors="ignore").strip()
             
@@ -218,6 +222,16 @@ def serial_reader_thread():
         ser = serial.Serial(SERIAL_PORT, BAUD, timeout=1)
         time.sleep(0.2)
         ser.reset_input_buffer()
+        print(f"DEBUG PBT: Arduino connected on {SERIAL_PORT} @ {BAUD} baud")
+        
+        # Test connection by reading a few lines
+        print("DEBUG PBT: Testing Arduino connection...")
+        for i in range(3):
+            if ser.in_waiting > 0:
+                line = ser.readline().decode(errors="ignore").strip()
+                if line:
+                    print(f"DEBUG PBT Test read: '{line}'")
+            time.sleep(0.5)
     except Exception as e:
         print(f"ERROR: Could not open serial port {SERIAL_PORT}: {e}", file=sys.stderr)
         serial_running = False
