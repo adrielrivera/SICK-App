@@ -273,7 +273,11 @@ def serial_reader_thread():
         elif not game_enabled and envelope > TRIGGER_THRESHOLD:
             # Safety violation - person detected, don't process hits
             areas = safety_info['areas']
-            print(f"SAFETY ALERT: Hit detected but game disabled - Person detected: {', '.join(areas)}")
+            print(f"\n🚨 SAFETY ALERT: PBT Hit Blocked 🚨")
+            print(f"   Time: {time.strftime('%H:%M:%S')}")
+            print(f"   Reason: Person detected in {', '.join(areas)}")
+            print(f"   Action: Game disabled, scoring blocked")
+            print(f"🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨\n")
         else:
             # Capture peak during capture window
             if envelope > peak:
