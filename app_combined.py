@@ -266,6 +266,7 @@ def serial_reader_thread():
     start_time = time.time()
     sample_count = 0
     last_emit = time.time()
+    last_status_request = time.time()
     emit_interval = EMIT_INTERVAL  # Emit data at configured rate
     
     batch_raw = []
@@ -277,6 +278,19 @@ def serial_reader_thread():
         # READ ARDUINO MESSAGES FIRST (Credit tracking, status updates)
         # ============================================================
         read_arduino_messages(ser)
+        
+        # Read Arduino messages more frequently to catch all responses
+        if ser.in_waiting > 0:
+            read_arduino_messages(ser)
+        
+        # Periodic status request every 2 seconds
+        if now - last_status_request > 2.0:
+            try:
+                ser.write(b"STATUS\n")
+                ser.flush()
+                last_status_request = now
+            except Exception as e:
+                print(f"Error sending periodic STATUS: {e}")
         
         # ============================================================
         # READ RAW PBT DATA (for PBT system)
@@ -347,6 +361,12 @@ def serial_reader_thread():
                     ser.write(b"PBT_HIT\n")
                     ser.flush()
                     print("  PBT_HIT sent to Arduino for credit tracking")
+                    
+                    # IMMEDIATELY read Arduino response messages multiple times
+                    for i in range(10):  # Read multiple times to catch all responses
+                        read_arduino_messages(ser)
+                        time.sleep(0.01)  # Small delay between reads
+                        
                 except Exception as e:
                     print(f"  Error sending PBT_HIT: {e}")
                 
@@ -354,6 +374,12 @@ def serial_reader_thread():
                 try:
                     ser.write(b"STATUS\n")
                     ser.flush()
+                    
+                    # Read Arduino response to STATUS command
+                    for i in range(5):
+                        read_arduino_messages(ser)
+                        time.sleep(0.01)
+                        
                 except Exception as e:
                     print(f"  Error requesting status: {e}")
                 
