@@ -27,17 +27,13 @@ WARNING: This is a development server. Do not use it in a production deployment.
 Press CTRL+C to quit
 DEBUG PBT: Arduino connected on /dev/ttyUSB0 @ 115200 baud
 DEBUG PBT: Testing Arduino connection...
-DEBUG PBT Test read: '015'
-DEBUG PBT Test read: '416'
-172.22.147.141 - - [27/Oct/2025 10:54:21] "GET /socket.io/?EIO=4&transport=polling&t=PeZbf39 HTTP/1.1" 200 -
+172.22.147.141 - - [27/Oct/2025 11:17:58] "GET /socket.io/?EIO=4&transport=polling&t=PeZh2yw HTTP/1.1" 200 -
 Client connected
-172.22.147.141 - - [27/Oct/2025 10:54:21] "POST /socket.io/?EIO=4&transport=polling&t=PeZbf3S&sid=x4d5zKsQrz9gEEV2AAAA HTTP/1.1" 200 -
-172.22.147.141 - - [27/Oct/2025 10:54:21] "GET /socket.io/?EIO=4&transport=polling&t=PeZbf3U&sid=x4d5zKsQrz9gEEV2AAAA HTTP/1.1" 200 -
-172.22.147.141 - - [27/Oct/2025 10:54:21] "GET /socket.io/?EIO=4&transport=polling&t=PeZbf44&sid=x4d5zKsQrz9gEEV2AAAA HTTP/1.1" 200 -
-172.22.147.141 - - [27/Oct/2025 10:54:21] "GET /socket.io/?EIO=4&transport=polling&t=PeZbf4l&sid=x4d5zKsQrz9gEEV2AAAA HTTP/1.1" 200 -
-172.22.147.141 - - [27/Oct/2025 10:54:21] "POST /socket.io/?EIO=4&transport=polling&t=PeZbf4h&sid=x4d5zKsQrz9gEEV2AAAA HTTP/1.1" 200 -
-Baseline calibrated: 507.0 ADC counts
-DEBUG PBT: 2300 bytes waiting from Arduino
+172.22.147.141 - - [27/Oct/2025 11:17:58] "POST /socket.io/?EIO=4&transport=polling&t=PeZh2z9&sid=sqPIC3PiIYzE5suLAAAA HTTP/1.1" 200 -
+172.22.147.141 - - [27/Oct/2025 11:17:58] "GET /socket.io/?EIO=4&transport=polling&t=PeZh2zC&sid=sqPIC3PiIYzE5suLAAAA HTTP/1.1" 200 -
+172.22.147.141 - - [27/Oct/2025 11:17:58] "GET /socket.io/?EIO=4&transport=polling&t=PeZh2zn&sid=sqPIC3PiIYzE5suLAAAA HTTP/1.1" 200 -
+DEBUG PBT Test read: '1019'
+Baseline calibrated: 511.3 ADC counts
 DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
   Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
 DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
@@ -46,17 +42,15 @@ DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
   Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
 DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
   Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
+Pulse #1: Peak=255.0 → 10 ms (INVERTED)
+  Mapping: Peak 255.0 → Pulse 10ms (Range: 24-60 → 10-100ms)
+  PBT_HIT sent to Arduino for credit tracking
+DEBUG PBT Arduino: '# PBT HIT: Total=14 Strikes=-14 Safety=INACTIVE'
+  Arduino: # PBT HIT: Total=14 Strikes=-14 Safety=INACTIVE
+DEBUG PBT Arduino: '# GAME OVER - No strikes remaining'
+  Arduino: # GAME OVER - No strikes remaining
 DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
   Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
-DEBUG PBT Arduino: '# LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR'
-  Arduino: # LIDAR_STATUS: TIM100=CLEAR TIM150=CLEAR
-Exception in thread Thread-1 (serial_reader_thread):
-Traceback (most recent call last):
-  File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
-    self.run()
-  File "/usr/lib/python3.11/threading.py", line 975, in run
-    self._target(*self._args, **self._kwargs)
-  File "/home/sst/SICK/SICK-App/app_combined.py", line 287, in serial_reader_thread
-    if now - last_status_request > 2.0:
-       ^^^
-UnboundLocalError: cannot access local variable 'now' where it is not associated with a value
+DEBUG PBT Arduino: '# STATUS: Credits=0 PBT=14 Strikes=-14 Safety=INACTIVE'
+  Arduino: # STATUS: Credits=0 PBT=14 Strikes=-14 Safety=INACTIVE
+
