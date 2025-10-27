@@ -275,6 +275,11 @@ def serial_reader_thread():
     
     while serial_running:
         # ============================================================
+        # GET CURRENT TIME FIRST
+        # ============================================================
+        now = time.time()
+        
+        # ============================================================
         # READ ARDUINO MESSAGES FIRST (Credit tracking, status updates)
         # ============================================================
         read_arduino_messages(ser)
@@ -316,7 +321,6 @@ def serial_reader_thread():
         # ============================================================
         # GPIO PULSE GENERATION LOGIC (Arduino GPIO control)
         # ============================================================
-        now = time.time()
         
         # Check combined LiDAR status
         safety_status, safety_info = get_combined_lidar_status()
