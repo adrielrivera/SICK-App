@@ -144,6 +144,11 @@ def read_arduino_messages(ser):
     try:
         while ser.in_waiting > 0:
             line = ser.readline().decode(errors="ignore").strip()
+            
+            # Debug: Print ALL Arduino messages
+            if line:
+                print(f"DEBUG PBT Arduino: '{line}'")
+            
             if line and line.startswith("#"):
                 print(f"  Arduino: {line}")
                 
@@ -166,6 +171,7 @@ def read_arduino_messages(ser):
                 tim150_detected = False
                 print(f"  Arduino: TiM150 CLEAR - RIGHT side clear")
     except Exception as e:
+        print(f"DEBUG PBT Serial Error: {e}")
         pass  # Ignore serial read errors
 
 def get_combined_lidar_status():
