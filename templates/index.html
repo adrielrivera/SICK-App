@@ -55,9 +55,30 @@
                     <p>System is ready for gameplay. Hit the PBT sensor to score points!</p>
                 </div>
             </div>
+            
+            <div class="lidar-status-grid">
+                <div class="lidar-status rear">
+                    <span class="lidar-label">Rear (TiM240)</span>
+                    <span class="status-dot" id="rear-dot"></span>
+                    <span id="rear-status">CLEAR</span>
+                </div>
+                <div class="lidar-status left">
+                    <span class="lidar-label">Left (TiM100)</span>
+                    <span class="status-dot" id="left-dot"></span>
+                    <span id="left-status">CLEAR</span>
+                </div>
+                <div class="lidar-status right">
+                    <span class="lidar-label">Right (TiM150)</span>
+                    <span class="status-dot" id="right-dot"></span>
+                    <span id="right-status">CLEAR</span>
+                </div>
+            </div>
+            
             <div class="safety-controls">
-                <button id="test-person-btn" class="test-btn">Test: Person Detected</button>
-                <button id="test-clear-btn" class="test-btn">Test: Clear Area</button>
+                <button id="test-person-btn" class="test-btn">Test: Rear Detected</button>
+                <button id="test-tim100-btn" class="test-btn">Test: Left Detected</button>
+                <button id="test-tim150-btn" class="test-btn">Test: Right Detected</button>
+                <button id="test-clear-btn" class="test-btn">Test: All Clear</button>
             </div>
         </div>
 

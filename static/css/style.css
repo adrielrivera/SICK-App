@@ -307,6 +307,61 @@ header h2 {
     display: flex;
     gap: 10px;
     justify-content: center;
+    flex-wrap: wrap;
+}
+
+.lidar-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.lidar-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.lidar-status.detected {
+    background-color: #f8d7da;
+    border-color: var(--danger-color);
+}
+
+.lidar-label {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+}
+
+.lidar-status .status-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: var(--success-color);
+    margin-bottom: 5px;
+    animation: pulse 2s infinite;
+}
+
+.lidar-status.detected .status-dot {
+    background-color: var(--danger-color);
+    animation: pulse-danger 1s infinite;
+}
+
+.lidar-status span:last-child {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--success-color);
+}
+
+.lidar-status.detected span:last-child {
+    color: var(--danger-color);
 }
 
 .test-btn {

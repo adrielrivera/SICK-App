@@ -53,6 +53,11 @@ pulse_count = 0
 # Safety system
 game_enabled = True
 
+# Multi-LiDAR status tracking
+tim240_alert = False
+tim100_detected = False
+tim150_detected = False
+
 
 def clamp(x, lo, hi):
     """Clamp value between min and max."""
@@ -135,13 +140,48 @@ def read_one_int(ser):
 
 def read_arduino_messages(ser):
     """Read and display Arduino status messages."""
+    global tim100_detected, tim150_detected
     try:
         while ser.in_waiting > 0:
             line = ser.readline().decode(errors="ignore").strip()
             if line and line.startswith("#"):
                 print(f"  Arduino: {line}")
+                
+                # Parse TiM1xx status from Arduino
+                if line.startswith("# LIDAR_STATUS:"):
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        tim100_detected = "DETECTED" in parts[1]
+                        tim150_detected = "DETECTED" in parts[3]
     except Exception as e:
         pass  # Ignore serial read errors
+
+def get_combined_lidar_status():
+    """Get combined status from all LiDARs."""
+    global tim240_alert, tim100_detected, tim150_detected
+    
+    # For now, we'll simulate TiM240 status based on test buttons
+    # In production, this would read from tim240_run.py process
+    
+    if tim240_alert or tim100_detected or tim150_detected:
+        unsafe_areas = []
+        if tim240_alert: unsafe_areas.append("REAR")
+        if tim100_detected: unsafe_areas.append("LEFT")
+        if tim150_detected: unsafe_areas.append("RIGHT")
+        
+        return "DANGER", {
+            'rear': tim240_alert,
+            'left': tim100_detected,
+            'right': tim150_detected,
+            'areas': unsafe_areas
+        }
+    else:
+        return "SAFE", {
+            'rear': False,
+            'left': False,
+            'right': False,
+            'areas': []
+        }
 
 
 def serial_reader_thread():
@@ -220,6 +260,10 @@ def serial_reader_thread():
         # ============================================================
         now = time.time()
         
+        # Check combined LiDAR status
+        safety_status, safety_info = get_combined_lidar_status()
+        game_enabled = (safety_status == "SAFE")
+        
         if armed and game_enabled:
             # Check for trigger (only if game is enabled)
             if envelope > TRIGGER_THRESHOLD:
@@ -228,7 +272,8 @@ def serial_reader_thread():
                 cap_end = now + (CAPTURE_MS / 1000.0)
         elif not game_enabled and envelope > TRIGGER_THRESHOLD:
             # Safety violation - person detected, don't process hits
-            print(f"SAFETY ALERT: Hit detected but game disabled - Person in safety zone")
+            areas = safety_info['areas']
+            print(f"SAFETY ALERT: Hit detected but game disabled - Person detected: {', '.join(areas)}")
         else:
             # Capture peak during capture window
             if envelope > peak:
@@ -389,25 +434,59 @@ def handle_safety_request():
 @socketio.on('test_person_detected')
 def handle_test_person():
     """Test function to simulate person detection."""
-    global game_enabled
-    game_enabled = False
+    global tim240_alert
+    tim240_alert = True
+    safety_status, safety_info = get_combined_lidar_status()
     emit('safety_status', {
-        'status': 'danger',
-        'game_enabled': False
+        'status': safety_status,
+        'game_enabled': (safety_status == 'safe'),
+        'areas': safety_info
     })
-    print("Test: Person detected - Game disabled")
+    print("Test: Person detected (REAR) - Game disabled")
 
 
 @socketio.on('test_area_clear')
 def handle_test_clear():
     """Test function to simulate area clear."""
-    global game_enabled
-    game_enabled = True
+    global tim240_alert, tim100_detected, tim150_detected
+    tim240_alert = False
+    tim100_detected = False
+    tim150_detected = False
+    safety_status, safety_info = get_combined_lidar_status()
     emit('safety_status', {
-        'status': 'safe',
-        'game_enabled': True
+        'status': safety_status,
+        'game_enabled': (safety_status == 'safe'),
+        'areas': safety_info
     })
-    print("Test: Area clear - Game enabled")
+    print("Test: All areas clear - Game enabled")
+
+
+@socketio.on('test_tim100_detected')
+def handle_test_tim100():
+    """Test function to simulate TiM100 detection."""
+    global tim100_detected
+    tim100_detected = True
+    safety_status, safety_info = get_combined_lidar_status()
+    emit('safety_status', {
+        'status': safety_status,
+        'game_enabled': (safety_status == 'safe'),
+        'areas': safety_info
+    })
+    print("Test: TiM100 detected (LEFT) - Game disabled")
+
+
+@socketio.on('test_tim150_detected')
+def handle_test_tim150():
+    """Test function to simulate TiM150 detection."""
+    global tim150_detected
+    tim150_detected = True
+    safety_status, safety_info = get_combined_lidar_status()
+    emit('safety_status', {
+        'status': safety_status,
+        'game_enabled': (safety_status == 'safe'),
+        'areas': safety_info
+    })
+    print("Test: TiM150 detected (RIGHT) - Game disabled")
 
 
 def start_serial_thread():
