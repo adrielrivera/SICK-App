@@ -1,0 +1,40 @@
+^Csst@raspberrypi:~/SICK/SICK-App $ ./start_combined.sh
+Activating virtual environment...
+Starting pigpio daemon...
+Starting SICK7 App...
+============================================================
+SICK7 - Arduino GPIO Control + Web Visualization
+============================================================
+Serial port: /dev/ttyUSB0 @ 115200 baud
+Samples per second: 800
+Arcade Interface (Arduino GPIO):
+  Arduino Pin 6: Press START signal (Active HIGH, 5V output)
+  Arduino Pin 5: Press ACTIVE signal (Active LOW, 0V output)
+Pulse Mapping: HIGH peak → SHORT pulse (INVERTED)
+Peak Range: 24-60 ADC → Pulse Range: 10-100ms
+Trigger threshold: 24 ADC counts
+Web server: http://0.0.0.0:5000
+============================================================
+GPIO control now handled by Arduino - no Pi GPIO needed!
+Arduino will control arcade motherboard pins via Serial commands.
+Initializing serial connection...
+ * Serving Flask app 'app_combined'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.22.147.141:5000
+Press CTRL+C to quit
+DEBUG PBT: Arduino connected on /dev/ttyUSB0 @ 115200 baud
+DEBUG PBT: Testing Arduino connection...
+DEBUG PBT Test read: 'Pin 8: 0 | Pin 9: 0 | TiM150: CLEAR'
+DEBUG PBT Test read: 'Pin 8: 0 | Pin 9: 0 | TiM150: CLEAR'
+Baseline calibrated: 40.0 ADC counts
+172.22.147.141 - - [27/Oct/2025 10:18:35] "GET /socket.io/?EIO=4&transport=polling&t=PeZTTBw HTTP/1.1" 200 -
+Client connected
+172.22.147.141 - - [27/Oct/2025 10:18:35] "POST /socket.io/?EIO=4&transport=polling&t=PeZTTCf&sid=ozF7h35Pxhl6DSneAAAA HTTP/1.1" 200 -
+172.22.147.141 - - [27/Oct/2025 10:18:35] "GET /socket.io/?EIO=4&transport=polling&t=PeZTTCj&sid=ozF7h35Pxhl6DSneAAAA HTTP/1.1" 200 -
+172.22.147.141 - - [27/Oct/2025 10:18:35] "GET /socket.io/?EIO=4&transport=polling&t=PeZTTDw&sid=ozF7h35Pxhl6DSneAAAA HTTP/1.1" 200 -
+172.22.147.141 - - [27/Oct/2025 10:18:36] "POST /socket.io/?EIO=4&transport=polling&t=PeZTTH6&sid=ozF7h35Pxhl6DSneAAAA HTTP/1.1" 200 -
+172.22.147.141 - - [27/Oct/2025 10:18:36] "GET /socket.io/?EIO=4&transport=polling&t=PeZTTHQ&sid=ozF7h35Pxhl6DSneAAAA HTTP/1.1" 200 -
+
