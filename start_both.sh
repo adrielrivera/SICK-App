@@ -56,21 +56,34 @@ trap cleanup SIGINT SIGTERM
 
 # Start PBT system in background
 echo "Starting PBT system..."
-python3 app_combined.py &
+python3 app_combined.py > pbt.log 2>&1 &
 PBT_PID=$!
 echo "PBT system started (PID: $PBT_PID)"
 
 # Wait a moment for PBT system to initialize
-sleep 2
+sleep 3
+
+# Check if PBT system is still running
+if ! kill -0 $PBT_PID 2>/dev/null; then
+    echo "ERROR: PBT system failed to start. Check pbt.log for details."
+    exit 1
+fi
 
 # Start LiDAR monitoring system in background
 echo "Starting LiDAR monitoring system..."
-python3 lidar_monitor.py &
+python3 lidar_monitor.py > lidar.log 2>&1 &
 LIDAR_PID=$!
 echo "LiDAR system started (PID: $LIDAR_PID)"
 
 # Wait a moment for LiDAR system to initialize
-sleep 2
+sleep 3
+
+# Check if LiDAR system is still running
+if ! kill -0 $LIDAR_PID 2>/dev/null; then
+    echo "ERROR: LiDAR system failed to start. Check lidar.log for details."
+    kill $PBT_PID 2>/dev/null
+    exit 1
+fi
 
 echo ""
 echo "=========================================="
@@ -80,8 +93,23 @@ echo "LiDAR Web interface: http://localhost:5001"
 echo "PBT WebSocket: ws://localhost:5000"
 echo "LiDAR WebSocket: ws://localhost:5001"
 echo ""
+echo "Log files: pbt.log, lidar.log"
 echo "Press Ctrl+C to stop both systems"
 echo "=========================================="
 
-# Wait for user interrupt
-wait
+# Monitor both processes
+while true; do
+    if ! kill -0 $PBT_PID 2>/dev/null; then
+        echo "ERROR: PBT system stopped unexpectedly!"
+        kill $LIDAR_PID 2>/dev/null
+        exit 1
+    fi
+    
+    if ! kill -0 $LIDAR_PID 2>/dev/null; then
+        echo "ERROR: LiDAR system stopped unexpectedly!"
+        kill $PBT_PID 2>/dev/null
+        exit 1
+    fi
+    
+    sleep 5
+done

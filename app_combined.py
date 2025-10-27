@@ -603,7 +603,7 @@ if __name__ == '__main__':
     
     try:
         # Run Flask app
-        socketio.run(app, host=HOST, port=PORT, debug=DEBUG)
+        socketio.run(app, host=HOST, port=PORT, debug=DEBUG, allow_unsafe_werkzeug=True)
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
