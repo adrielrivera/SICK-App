@@ -153,6 +153,18 @@ def read_arduino_messages(ser):
                     if len(parts) >= 4:
                         tim100_detected = "DETECTED" in parts[1]
                         tim150_detected = "DETECTED" in parts[3]
+            elif "TiM100 DETECTED" in line:
+                tim100_detected = True
+                print(f"  Arduino: TiM100 DETECTED - Person on LEFT side")
+            elif "TiM100 CLEAR" in line:
+                tim100_detected = False
+                print(f"  Arduino: TiM100 CLEAR - LEFT side clear")
+            elif "TiM150 DETECTED" in line:
+                tim150_detected = True
+                print(f"  Arduino: TiM150 DETECTED - Person on RIGHT side")
+            elif "TiM150 CLEAR" in line:
+                tim150_detected = False
+                print(f"  Arduino: TiM150 CLEAR - RIGHT side clear")
     except Exception as e:
         pass  # Ignore serial read errors
 
