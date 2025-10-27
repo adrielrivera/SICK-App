@@ -147,12 +147,13 @@ def read_arduino_messages(ser):
     """Read and display Arduino status messages."""
     global tim100_detected, tim150_detected
     try:
-        # Debug: Check if there's data waiting
-        if ser.in_waiting > 0:
-            print(f"DEBUG PBT: {ser.in_waiting} bytes waiting from Arduino")
+        # Limit the number of lines read per call to prevent blocking
+        lines_read = 0
+        max_lines_per_call = 10
         
-        while ser.in_waiting > 0:
+        while ser.in_waiting > 0 and lines_read < max_lines_per_call:
             line = ser.readline().decode(errors="ignore").strip()
+            lines_read += 1
             
             # Skip raw PBT data (just numbers) - only process system messages
             if line and line.isdigit():
@@ -280,13 +281,11 @@ def serial_reader_thread():
         now = time.time()
         
         # ============================================================
-        # READ ARDUINO MESSAGES FIRST (Credit tracking, status updates)
+        # READ ARDUINO MESSAGES MULTIPLE TIMES (Credit tracking, status updates)
         # ============================================================
-        read_arduino_messages(ser)
-        
-        # Read Arduino messages more frequently to catch all responses
-        if ser.in_waiting > 0:
+        for _ in range(3):  # Read Arduino messages multiple times per loop
             read_arduino_messages(ser)
+            time.sleep(0.001)  # Small delay between reads
         
         # Periodic status request every 2 seconds
         if now - last_status_request > 2.0:
@@ -298,15 +297,23 @@ def serial_reader_thread():
                 print(f"Error sending periodic STATUS: {e}")
         
         # ============================================================
-        # READ RAW PBT DATA (for PBT system)
+        # READ RAW PBT DATA (Non-blocking for PBT system)
         # ============================================================
-        v = read_one_int(ser)
+        v = None
+        if ser.in_waiting > 0:
+            v = read_one_int(ser)
+        
         if v is None:
             time.sleep(0.001)
             continue
         
         sample_count += 1
         current_time = time.time() - start_time
+        
+        # Periodic serial buffer reset to prevent overflow
+        if sample_count % 1000 == 0:
+            ser.reset_input_buffer()
+            print("DEBUG: Reset serial input buffer")
         
         # Update baseline and envelope
         baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v
