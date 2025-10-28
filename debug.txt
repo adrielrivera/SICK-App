@@ -1,3 +1,34 @@
+(venv) sick7@raspberrypi:~/SICK/SICK-App $ ls
+app_combined.py                pbt_tester.py
+app.py                         __pycache__
+cleanup_arduino_files.sh       requirements.txt
+COMPLETE_SIMULATION_README.md  setup_cloudflare_tunnel.sh
+config_auth.py                 sick-pbt.service
+config_lidar.py                start_arduino_simulator.sh
+config_optimized.py            start_both.sh
+config.py                      start_combined.sh
+config_sick10bar.py            start_lidar.sh
+CUSTOM_PEAK_GUIDE.md           start_optimized.sh
+debug.txt                      start.sh
+deploy_pi.sh                   start_tester.sh
+lidar.log                      static
+lidar_monitor.py               templates
+monitor_performance.sh         test_mode.py
+ngrok-v3-stable-linux-arm.tgz  unified_pbt_lidar.ino
+NO_RANDOM_PEAKS_README.md      UNIFIED_SYSTEM_README.md
+pbt.log                        upload_unified_arduino.sh
+pbt_pulse_plot.py              venv
+(venv) sick7@raspberrypi:~/SICK/SICK-App $ ./cleanup_arduino_files.sh 
+==========================================
+Cleaning up Arduino files
+==========================================
+Removing old Arduino files...
+Remaining Arduino files:
+-rw-rw-r-- 1 sick7 sick7 8674 Oct 28 05:32 unified_pbt_lidar.ino
+==========================================
+Cleanup complete!
+Only unified_pbt_lidar.ino should remain
+==========================================
 (venv) sick7@raspberrypi:~/SICK/SICK-App $ ./upload_unified_arduino.sh 
 ==========================================
 Uploading SICK7 Unified Arduino Code
@@ -5,114 +36,9 @@ Uploading SICK7 Unified Arduino Code
 Checking for Arduino...
 Found Arduino on: /dev/ttyUSB0
 Compiling unified Arduino code...
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:5:11: error: redefinition of 'const int PBT_PIN'
- const int PBT_PIN = A0;           // PBT sensor input
-           ^~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:5:11: note: 'const int PBT_PIN' previously defined here
- const int PBT_PIN = A0;           // PBT sensor input (not used in simulation)
-           ^~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:6:11: error: redefinition of 'const int TIM100_PIN'
- const int TIM100_PIN = 8;         // TiM100 (Left) detection input
-           ^~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:6:11: note: 'const int TIM100_PIN' previously defined here
- const int TIM100_PIN = 8;         // TiM100 (Left) detection input
-           ^~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:7:11: error: redefinition of 'const int TIM150_PIN'
- const int TIM150_PIN = 9;         // TiM150 (Right) detection input
-           ^~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:7:11: note: 'const int TIM150_PIN' previously defined here
- const int TIM150_PIN = 9;         // TiM150 (Right) detection input
-           ^~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:8:11: error: redefinition of 'const int LED_PIN'
- const int LED_PIN = 13;           // Status LED
-           ^~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:9:11: note: 'const int LED_PIN' previously defined here
- const int LED_PIN = 13;           // Status LED
-           ^~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:9:11: error: redefinition of 'const int GPIO_PIN6'
- const int GPIO_PIN6 = 6;          // Arcade motherboard Pin 6 (Press START)
-           ^~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:10:11: note: 'const int GPIO_PIN6' previously defined here
- const int GPIO_PIN6 = 6;          // Arcade motherboard Pin 6 (Press START)
-           ^~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:10:11: error: redefinition of 'const int GPIO_PIN5'
- const int GPIO_PIN5 = 5;          // Arcade motherboard Pin 5 (Press ACTIVE)
-           ^~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:11:11: note: 'const int GPIO_PIN5' previously defined here
- const int GPIO_PIN5 = 5;          // Arcade motherboard Pin 5 (Press ACTIVE)
-           ^~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:13:11: error: redefinition of 'const int SAMPLES_PER_SEC'
- const int SAMPLES_PER_SEC = 800;
-           ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:15:11: note: 'const int SAMPLES_PER_SEC' previously defined here
- const int SAMPLES_PER_SEC = 800;
-           ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:14:21: error: redefinition of 'const long unsigned int SAMPLE_US'
- const unsigned long SAMPLE_US = 1000000UL / SAMPLES_PER_SEC;
-                     ^~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:16:21: note: 'const long unsigned int SAMPLE_US' previously defined here
- const unsigned long SAMPLE_US = 1000000UL / SAMPLES_PER_SEC;
-                     ^~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:26:6: error: redefinition of 'bool tim100_detected'
- bool tim100_detected = false;
-      ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:31:6: note: 'bool tim100_detected' previously defined here
- bool tim100_detected = false;
-      ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:27:6: error: redefinition of 'bool tim150_detected'
- bool tim150_detected = false;
-      ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:32:6: note: 'bool tim150_detected' previously defined here
- bool tim150_detected = false;
-      ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:28:5: error: redefinition of 'int lastTim100State'
- int lastTim100State = LOW;
-     ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:33:5: note: 'int lastTim100State' previously defined here
- int lastTim100State = LOW;
-     ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:29:5: error: redefinition of 'int lastTim150State'
- int lastTim150State = LOW;
-     ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:34:5: note: 'int lastTim150State' previously defined here
- int lastTim150State = LOW;
-     ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:45:8: error: redefinition of 'String gpioCommand'
- String gpioCommand = "";
-        ^~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:37:8: note: 'String gpioCommand' previously declared here
- String gpioCommand = "";
-        ^~~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino: In function 'void setup()':
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:47:6: error: redefinition of 'void setup()'
- void setup() {
-      ^~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:44:6: note: 'void setup()' previously defined here
- void setup() {
-      ^~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino: In function 'void loop()':
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:80:6: error: redefinition of 'void loop()'
- void loop() {
-      ^~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:84:6: note: 'void loop()' previously defined here
- void loop() {
-      ^~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino: In function 'void handleGPIOCommands()':
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:195:6: error: redefinition of 'void handleGPIOCommands()'
- void handleGPIOCommands() {
-      ^~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:198:6: note: 'void handleGPIOCommands()' previously defined here
- void handleGPIOCommands() {
-      ^~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino: In function 'void processGPIOCommand(String)':
-/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:211:6: error: redefinition of 'void processGPIOCommand(String)'
- void processGPIOCommand(String command) {
-      ^~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:214:6: note: 'void processGPIOCommand(String)' previously defined here
- void processGPIOCommand(String command) {
-      ^~~~~~~~~~~~~~~~~~
-
-Used platform Version Path
-arduino:avr   1.8.6   /home/sick7/.arduino15/packages/arduino/hardware/avr/1.8.6
-Error during build: exit status 1
+Can't open sketch: main file missing from sketch: /home/sick7/SICK/SICK-App/SICK-App.ino
 ERROR: Compilation failed!
+Make sure there's only one .ino file in the directory
+(venv) sick7@raspberrypi:~/SICK/SICK-App $ ls -la *.ino
+-rw-rw-r-- 1 sick7 sick7 8674 Oct 28 05:32 unified_pbt_lidar.ino
+(venv) sick7@raspberrypi:~/SICK/SICK-App $ 
