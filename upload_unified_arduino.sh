@@ -34,10 +34,11 @@ echo "Found Arduino on: $ARDUINO_PORT"
 
 # Compile the code
 echo "Compiling unified Arduino code..."
-arduino-cli compile --fqbn arduino:avr:uno unified_pbt_lidar.ino
+arduino-cli compile --fqbn arduino:avr:uno .
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Compilation failed!"
+    echo "Make sure there's only one .ino file in the directory"
     exit 1
 fi
 
@@ -45,7 +46,7 @@ echo "Compilation successful!"
 
 # Upload to Arduino
 echo "Uploading to Arduino..."
-arduino-cli upload -p $ARDUINO_PORT --fqbn arduino:avr:uno unified_pbt_lidar.ino
+arduino-cli upload -p $ARDUINO_PORT --fqbn arduino:avr:uno .
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Upload failed!"
