@@ -291,7 +291,7 @@ def start_serial_thread():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("SICK7 - LiDAR Monitoring System")
+    print("SICK7 stupid stupid 67676767")
     print("=" * 60)
     print(f"Serial port: {SERIAL_PORT} @ {BAUD} baud")
     print(f"Web server: http://{HOST}:{PORT}")

@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SICK7 PBT Scoring Tester</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.8;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .config-panel {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .config-panel h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .config-label {
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .config-value {
+            color: #007bff;
+            font-weight: 500;
+        }
+        
+        .input-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .input-group {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .input-group h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        label {
+            font-weight: bold;
+            color: #495057;
+            min-width: 120px;
+        }
+        
+        input[type="number"] {
+            width: 100px;
+            padding: 8px 12px;
+            border: 2px solid #ced4da;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+        
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .slider-value {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 1.1em;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,123,255,0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .test-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .simulate-btn {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+        
+        .result {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .result.triggered {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .result.not-triggered {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        
+        .result h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .result-label {
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .result-value {
+            color: #007bff;
+            font-weight: 500;
+        }
+        
+        .score-high {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .score-medium {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        
+        .score-low {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .score-none {
+            color: #6c757d;
+            font-weight: bold;
+        }
+        
+        .range-results {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .range-results h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        th {
+            background: #e9ecef;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .triggered-row {
+            background: #d4edda;
+        }
+        
+        .not-triggered-row {
+            background: #f8d7da;
+        }
+        
+        .simulation-sequence {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .simulation-sequence h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .sequence-step {
+            padding: 5px 0;
+            border-bottom: 1px solid #ffeaa7;
+        }
+        
+        .sequence-step:last-child {
+            border-bottom: none;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #721c24;
+            display: none;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background: #28a745;
+        }
+        
+        .status-disconnected {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 SICK7 PBT Scoring Tester</h1>
+            <p>Test the PBT scoring system with fake peak inputs</p>
+            <div>
+                <span class="status-indicator" id="status-indicator"></span>
+                <span id="connection-status">Connecting...</span>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="config-panel">
+                <h3>⚙️ System Configuration</h3>
+                <div class="config-grid" id="config-grid">
+                    <!-- Configuration will be loaded here -->
+                </div>
+            </div>
+            
+            <div class="input-section">
+                <div class="input-group">
+                    <h3>🎯 Single Peak Test</h3>
+                    <div class="input-row">
+                        <label for="peak-input">Peak Value:</label>
+                        <input type="number" id="peak-input" min="0" max="100" value="30" step="0.1">
+                        <span>ADC counts</span>
+                    </div>
+                    <div class="input-row">
+                        <label for="peak-slider">Peak Slider:</label>
+                        <input type="range" id="peak-slider" min="24" max="60" value="30" step="0.1" class="slider" oninput="updateFromSlider()">
+                        <span class="slider-value" id="slider-value">30.0</span>
+                    </div>
+                    <div class="test-buttons">
+                        <button onclick="testPeak()">Test Peak</button>
+                        <button class="simulate-btn" onclick="simulateHit()">Simulate Hit</button>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <h3>📊 Range Testing</h3>
+                    <div class="input-row">
+                        <label for="range-start">Start:</label>
+                        <input type="number" id="range-start" min="0" max="100" value="24" step="1">
+                        <span>ADC</span>
+                    </div>
+                    <div class="input-row">
+                        <label for="range-end">End:</label>
+                        <input type="number" id="range-end" min="0" max="100" value="60" step="1">
+                        <span>ADC</span>
+                    </div>
+                    <div class="input-row">
+                        <label for="range-step">Step:</label>
+                        <input type="number" id="range-step" min="0.5" max="10" value="2" step="0.5">
+                        <span>ADC</span>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="testRange()">Test Range</button>
+                        <button class="test-btn" onclick="testSpecific()">Test Specific Values</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="result" class="result">
+                <h3>📈 Test Results</h3>
+                <div id="result-content"></div>
+            </div>
+            
+            <div id="range-results" class="range-results">
+                <h3>📊 Range Test Results</h3>
+                <div id="range-content"></div>
+            </div>
+            
+            <div id="simulation-result" class="simulation-sequence">
+                <h3>🎬 Hit Simulation</h3>
+                <div id="simulation-content"></div>
+            </div>
+            
+            <div id="error" class="error">
+                <h3>❌ Error</h3>
+                <div id="error-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // Connection status
+        socket.on('connect', () => {
+            document.getElementById('connection-status').textContent = 'Connected';
+            document.getElementById('status-indicator').className = 'status-indicator status-connected';
+        });
+        
+        socket.on('disconnect', () => {
+            document.getElementById('connection-status').textContent = 'Disconnected';
+            document.getElementById('status-indicator').className = 'status-indicator status-disconnected';
+        });
+        
+        // Configuration
+        socket.on('config', (data) => {
+            const configGrid = document.getElementById('config-grid');
+            configGrid.innerHTML = `
+                <div class="config-item">
+                    <span class="config-label">Trigger Threshold:</span>
+                    <span class="config-value">${data.trigger_threshold} ADC counts</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Peak Range:</span>
+                    <span class="config-value">${data.peak_range} ADC counts</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Pulse Range:</span>
+                    <span class="config-value">${data.pulse_range}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Mapping:</span>
+                    <span class="config-value">${data.mapping}</span>
+                </div>
+            `;
+        });
+        
+        // Update slider when input changes
+        function updateFromSlider() {
+            const slider = document.getElementById('peak-slider');
+            const input = document.getElementById('peak-input');
+            const value = parseFloat(slider.value);
+            input.value = value.toFixed(1);
+            document.getElementById('slider-value').textContent = value.toFixed(1);
+        }
+        
+        // Update slider when input changes
+        document.getElementById('peak-input').addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (value >= 24 && value <= 60) {
+                document.getElementById('peak-slider').value = value;
+                document.getElementById('slider-value').textContent = value.toFixed(1);
+            }
+        });
+        
+        // Test functions
+        function testPeak() {
+            const peak = parseFloat(document.getElementById('peak-input').value);
+            socket.emit('test_peak', { peak: peak });
+        }
+        
+        function simulateHit() {
+            const peak = parseFloat(document.getElementById('peak-input').value);
+            socket.emit('simulate_hit', { peak: peak });
+        }
+        
+        function testRange() {
+            const start = parseFloat(document.getElementById('range-start').value);
+            const end = parseFloat(document.getElementById('range-end').value);
+            const step = parseFloat(document.getElementById('range-step').value);
+            socket.emit('test_range', { start: start, end: end, step: step });
+        }
+        
+        function testSpecific() {
+            const values = [20, 24, 30, 35, 40, 45, 50, 55, 60, 65, 70];
+            socket.emit('test_specific', { values: values });
+        }
+        
+        // Result handlers
+        socket.on('peak_result', (data) => {
+            const resultDiv = document.getElementById('result');
+            const contentDiv = document.getElementById('result-content');
+            
+            const triggered = data.triggered;
+            const className = triggered ? 'triggered' : 'not-triggered';
+            
+            let scoreClass = 'score-none';
+            if (triggered) {
+                if (data.pulse_width < 20) scoreClass = 'score-high';
+                else if (data.pulse_width < 50) scoreClass = 'score-medium';
+                else scoreClass = 'score-low';
+            }
+            
+            contentDiv.innerHTML = `
+                <div class="result-item">
+                    <span class="result-label">Peak Value:</span>
+                    <span class="result-value">${data.peak} ADC counts</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Pulse Width:</span>
+                    <span class="result-value">${data.pulse_width.toFixed(1)} ms</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Triggered:</span>
+                    <span class="result-value">${triggered ? 'YES' : 'NO'}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Threshold:</span>
+                    <span class="result-value">${data.threshold} ADC counts</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Score Level:</span>
+                    <span class="result-value ${scoreClass}">${data.score_level}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Mapping:</span>
+                    <span class="result-value">${data.range}</span>
+                </div>
+            `;
+            
+            resultDiv.className = `result ${className}`;
+            resultDiv.style.display = 'block';
+            
+            // Hide other result panels
+            document.getElementById('range-results').style.display = 'none';
+            document.getElementById('simulation-result').style.display = 'none';
+        });
+        
+        socket.on('range_result', (data) => {
+            const container = document.getElementById('range-content');
+            container.innerHTML = `
+                <p><strong>Range:</strong> ${data.start}-${data.end} (step ${data.step}) - ${data.results.length} values tested</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Peak</th>
+                            <th>Pulse Width</th>
+                            <th>Triggered</th>
+                            <th>Score Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.results.map(r => {
+                            const rowClass = r.triggered ? 'triggered-row' : 'not-triggered-row';
+                            let scoreClass = 'score-none';
+                            if (r.triggered) {
+                                if (r.pulse_width < 20) scoreClass = 'score-high';
+                                else if (r.pulse_width < 50) scoreClass = 'score-medium';
+                                else scoreClass = 'score-low';
+                            }
+                            return `<tr class="${rowClass}">
+                                <td>${r.peak}</td>
+                                <td>${r.pulse_width.toFixed(1)}ms</td>
+                                <td>${r.triggered ? 'YES' : 'NO'}</td>
+                                <td class="${scoreClass}">${r.score_level}</td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('range-results').style.display = 'block';
+            
+            // Hide other result panels
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('simulation-result').style.display = 'none';
+        });
+        
+        socket.on('specific_result', (data) => {
+            const container = document.getElementById('range-content');
+            container.innerHTML = `
+                <p><strong>Specific Values Tested:</strong> ${data.values.join(', ')}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Peak</th>
+                            <th>Pulse Width</th>
+                            <th>Triggered</th>
+                            <th>Score Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.results.map(r => {
+                            const rowClass = r.triggered ? 'triggered-row' : 'not-triggered-row';
+                            let scoreClass = 'score-none';
+                            if (r.triggered) {
+                                if (r.pulse_width < 20) scoreClass = 'score-high';
+                                else if (r.pulse_width < 50) scoreClass = 'score-medium';
+                                else scoreClass = 'score-low';
+                            }
+                            return `<tr class="${rowClass}">
+                                <td>${r.peak}</td>
+                                <td>${r.pulse_width.toFixed(1)}ms</td>
+                                <td>${r.triggered ? 'YES' : 'NO'}</td>
+                                <td class="${scoreClass}">${r.score_level}</td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('range-results').style.display = 'block';
+            
+            // Hide other result panels
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('simulation-result').style.display = 'none';
+        });
+        
+        socket.on('simulation_result', (data) => {
+            const container = document.getElementById('simulation-content');
+            
+            if (data.success) {
+                container.innerHTML = `
+                    <div class="result-item">
+                        <span class="result-label">Peak Value:</span>
+                        <span class="result-value">${data.peak} ADC counts</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Pulse Width:</span>
+                        <span class="result-value">${data.pulse_width.toFixed(1)} ms</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Score Level:</span>
+                        <span class="result-value">${data.score_level}</span>
+                    </div>
+                    <h4>Hit Sequence:</h4>
+                    ${data.sequence.map(step => `<div class="sequence-step">${step}</div>`).join('')}
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="result-item">
+                        <span class="result-label">Status:</span>
+                        <span class="result-value" style="color: #dc3545;">${data.message}</span>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('simulation-result').style.display = 'block';
+            
+            // Hide other result panels
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('range-results').style.display = 'none';
+        });
+        
+        socket.on('error', (data) => {
+            document.getElementById('error-content').textContent = data.message;
+            document.getElementById('error').style.display = 'block';
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('PBT Tester interface initialized');
+        });
+    </script>
+</body>
+</html>
