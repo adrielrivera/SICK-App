@@ -1,59 +1,14 @@
-(venv) sst@raspberrypi:~/SICK/SICK-App $ ./start_both.sh
-==========================================
-SICK7 Combined System (PBT + LiDAR)
-==========================================
-Activating virtual environment...
-Checking dependencies...
-Checking Arduino connection...
-Starting PBT system...
-PBT system started (PID: 6198)
-============================================================
-SICK7 - Arduino GPIO Control + Web Visualization
-============================================================
-Serial port: /dev/ttyUSB0 @ 115200 baud
-Samples per second: 800
-Arcade Interface (Arduino GPIO):
-  Arduino Pin 6: Press START signal (Active HIGH, 5V output)
-  Arduino Pin 5: Press ACTIVE signal (Active LOW, 0V output)
-Pulse Mapping: HIGH peak → SHORT pulse (INVERTED)
-Peak Range: 24-60 ADC → Pulse Range: 10-100ms
-Trigger threshold: 24 ADC counts
-Web server: http://0.0.0.0:5000
-============================================================
-GPIO control now handled by Arduino - no Pi GPIO needed!
-Traceback (most recent call last):
-Arduino will control arcade motherboard pins via Serial commands.
-  File "/home/sst/SICK/SICK-App/app_combined.py", line 606, in <module>
-Initializing serial connection...
-    socketio.run(app, host=HOST, port=PORT, debug=DEBUG)
-  File "/home/sst/SICK/SICK-App/venv/lib/python3.11/site-packages/flask_socketio/__init__.py", line 640, in run
-    raise RuntimeError('The Werkzeug web server is not '
-RuntimeError: The Werkzeug web server is not designed to run in production. Pass allow_unsafe_werkzeug=True to the run() method to disable this error.
-Starting LiDAR monitoring system...
-LiDAR system started (PID: 6203)
-============================================================
-SICK7 - LiDAR Monitoring System
-============================================================
-Serial port: /dev/ttyUSB0 @ 115200 baud
-Web server: http://0.0.0.0:5001
-WebSocket: ws://0.0.0.0:5001
-Monitoring: TiM100 (LEFT), TiM150 (RIGHT), TiM240 (REAR)
-============================================================
-Initializing LiDAR monitoring serial connection...
-Traceback (most recent call last):
-  File "/home/sst/SICK/SICK-App/lidar_monitor.py", line 307, in <module>
-    socketio.run(app, host=HOST, port=PORT, debug=DEBUG)
-  File "/home/sst/SICK/SICK-App/venv/lib/python3.11/site-packages/flask_socketio/__init__.py", line 640, in run
-    raise RuntimeError('The Werkzeug web server is not '
-RuntimeError: The Werkzeug web server is not designed to run in production. Pass allow_unsafe_werkzeug=True to the run() method to disable this error.
+# Install Arduino CLI
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 
-==========================================
-Both systems are running!
-PBT Web interface: http://localhost:5000
-LiDAR Web interface: http://localhost:5001
-PBT WebSocket: ws://localhost:5000
-LiDAR WebSocket: ws://localhost:5001
+# Add to PATH
+echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+source ~/.bashrc
 
-Press Ctrl+C to stop both systems
-==========================================
-test
+# Install Arduino core
+arduino-cli core install arduino:avr
+
+# Upload the simulator
+cd /Users/adrielrivera/Documents/SICK7/SICK-App
+arduino-cli compile --fqbn arduino:avr:uno arduino_pbt_simulator.ino
+arduino-cli upload -p /dev/ttyUSB0 --fqbn arduino:avr:uno arduino_pbt_simulator.ino
