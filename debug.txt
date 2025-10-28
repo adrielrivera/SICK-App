@@ -1,223 +1,111 @@
-(venv) sick7@raspberrypi:~/SICK/SICK-App $ arduino-cli compile --fqbn arduino:avr:uno SICK-App.ino
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:5:11: error: redefinition of 'const int PBT_PIN'
- const int PBT_PIN = A0;           // PBT sensor input (not used in simulation)
+(venv) sick7@raspberrypi:~/SICK/SICK-App $ ./upload_unified_arduino.sh 
+==========================================
+Uploading SICK7 Unified Arduino Code
+==========================================
+Checking for Arduino...
+Found Arduino on: /dev/ttyUSB0
+Compiling unified Arduino code...
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:5:11: error: redefinition of 'const int PBT_PIN'
+ const int PBT_PIN = A0;           // PBT sensor input
            ^~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:5:11: note: 'const int PBT_PIN' previously defined here
  const int PBT_PIN = A0;           // PBT sensor input (not used in simulation)
            ^~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:6:11: error: redefinition of 'const int TIM100_PIN'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:6:11: error: redefinition of 'const int TIM100_PIN'
  const int TIM100_PIN = 8;         // TiM100 (Left) detection input
            ^~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:6:11: note: 'const int TIM100_PIN' previously defined here
  const int TIM100_PIN = 8;         // TiM100 (Left) detection input
            ^~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:7:11: error: redefinition of 'const int TIM150_PIN'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:7:11: error: redefinition of 'const int TIM150_PIN'
  const int TIM150_PIN = 9;         // TiM150 (Right) detection input
            ^~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:7:11: note: 'const int TIM150_PIN' previously defined here
  const int TIM150_PIN = 9;         // TiM150 (Right) detection input
            ^~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:8:11: error: redefinition of 'const int BUZZER_PIN'
- const int BUZZER_PIN = 10;        // Piezo buzzer output
-           ^~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:8:11: note: 'const int BUZZER_PIN' previously defined here
- const int BUZZER_PIN = 10;        // Piezo buzzer output
-           ^~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:9:11: error: redefinition of 'const int LED_PIN'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:8:11: error: redefinition of 'const int LED_PIN'
  const int LED_PIN = 13;           // Status LED
            ^~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:9:11: note: 'const int LED_PIN' previously defined here
  const int LED_PIN = 13;           // Status LED
            ^~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:10:11: error: redefinition of 'const int GPIO_PIN6'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:9:11: error: redefinition of 'const int GPIO_PIN6'
  const int GPIO_PIN6 = 6;          // Arcade motherboard Pin 6 (Press START)
            ^~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:10:11: note: 'const int GPIO_PIN6' previously defined here
  const int GPIO_PIN6 = 6;          // Arcade motherboard Pin 6 (Press START)
            ^~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:11:11: error: redefinition of 'const int GPIO_PIN5'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:10:11: error: redefinition of 'const int GPIO_PIN5'
  const int GPIO_PIN5 = 5;          // Arcade motherboard Pin 5 (Press ACTIVE)
            ^~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:11:11: note: 'const int GPIO_PIN5' previously defined here
  const int GPIO_PIN5 = 5;          // Arcade motherboard Pin 5 (Press ACTIVE)
            ^~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:12:11: error: redefinition of 'const int WAVEFORM_PIN'
- const int WAVEFORM_PIN = 3;       // PWM output for oscilloscope (DAC simulation)
-           ^~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:12:11: note: 'const int WAVEFORM_PIN' previously defined here
- const int WAVEFORM_PIN = 3;       // PWM output for oscilloscope (DAC simulation)
-           ^~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:15:11: error: redefinition of 'const int SAMPLES_PER_SEC'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:13:11: error: redefinition of 'const int SAMPLES_PER_SEC'
  const int SAMPLES_PER_SEC = 800;
            ^~~~~~~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:15:11: note: 'const int SAMPLES_PER_SEC' previously defined here
  const int SAMPLES_PER_SEC = 800;
            ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:16:21: error: redefinition of 'const long unsigned int SAMPLE_US'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:14:21: error: redefinition of 'const long unsigned int SAMPLE_US'
  const unsigned long SAMPLE_US = 1000000UL / SAMPLES_PER_SEC;
                      ^~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:16:21: note: 'const long unsigned int SAMPLE_US' previously defined here
  const unsigned long SAMPLE_US = 1000000UL / SAMPLES_PER_SEC;
                      ^~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:17:11: error: redefinition of 'const int BASELINE_ADC'
- const int BASELINE_ADC = 512;     // 2.5V baseline
-           ^~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:17:11: note: 'const int BASELINE_ADC' previously defined here
- const int BASELINE_ADC = 512;     // 2.5V baseline
-           ^~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:18:11: error: redefinition of 'const int NOISE_LEVEL'
- const int NOISE_LEVEL = 5;        // Random noise amplitude
-           ^~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:18:11: note: 'const int NOISE_LEVEL' previously defined here
- const int NOISE_LEVEL = 5;        // Random noise amplitude
-           ^~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:19:11: error: redefinition of 'const int PEAK_AMPLITUDE'
- const int PEAK_AMPLITUDE = 100;   // Maximum peak amplitude
-           ^~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:19:11: note: 'const int PEAK_AMPLITUDE' previously defined here
- const int PEAK_AMPLITUDE = 100;   // Maximum peak amplitude
-           ^~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:20:11: error: redefinition of 'const int PEAK_DURATION'
- const int PEAK_DURATION = 50;     // Peak duration in samples
-           ^~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:20:11: note: 'const int PEAK_DURATION' previously defined here
- const int PEAK_DURATION = 50;     // Peak duration in samples
-           ^~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:23:6: error: redefinition of 'bool simulation_running'
- bool simulation_running = true;
-      ^~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:23:6: note: 'bool simulation_running' previously defined here
- bool simulation_running = true;
-      ^~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:24:6: error: redefinition of 'bool generate_peak'
- bool generate_peak = false;
-      ^~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:24:6: note: 'bool generate_peak' previously defined here
- bool generate_peak = false;
-      ^~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:25:5: error: redefinition of 'int peak_counter'
- int peak_counter = 0;
-     ^~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:25:5: note: 'int peak_counter' previously defined here
- int peak_counter = 0;
-     ^~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:26:5: error: redefinition of 'int peak_amplitude'
- int peak_amplitude = 0;
-     ^~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:26:5: note: 'int peak_amplitude' previously defined here
- int peak_amplitude = 0;
-     ^~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:27:5: error: redefinition of 'int current_value'
- int current_value = BASELINE_ADC;
-     ^~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:27:5: note: 'int current_value' previously defined here
- int current_value = BASELINE_ADC;
-     ^~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:28:15: error: redefinition of 'long unsigned int next_sample'
- unsigned long next_sample = 0;
-               ^~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:28:15: note: 'long unsigned int next_sample' previously defined here
- unsigned long next_sample = 0;
-               ^~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:31:6: error: redefinition of 'bool tim100_detected'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:26:6: error: redefinition of 'bool tim100_detected'
  bool tim100_detected = false;
       ^~~~~~~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:31:6: note: 'bool tim100_detected' previously defined here
  bool tim100_detected = false;
       ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:32:6: error: redefinition of 'bool tim150_detected'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:27:6: error: redefinition of 'bool tim150_detected'
  bool tim150_detected = false;
       ^~~~~~~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:32:6: note: 'bool tim150_detected' previously defined here
  bool tim150_detected = false;
       ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:33:5: error: redefinition of 'int lastTim100State'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:28:5: error: redefinition of 'int lastTim100State'
  int lastTim100State = LOW;
      ^~~~~~~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:33:5: note: 'int lastTim100State' previously defined here
  int lastTim100State = LOW;
      ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:34:5: error: redefinition of 'int lastTim150State'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:29:5: error: redefinition of 'int lastTim150State'
  int lastTim150State = LOW;
      ^~~~~~~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:34:5: note: 'int lastTim150State' previously defined here
  int lastTim150State = LOW;
      ^~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:37:8: error: redefinition of 'String gpioCommand'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:45:8: error: redefinition of 'String gpioCommand'
  String gpioCommand = "";
         ^~~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:37:8: note: 'String gpioCommand' previously declared here
  String gpioCommand = "";
         ^~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:38:6: error: redefinition of 'bool gpioCommandReady'
- bool gpioCommandReady = false;
-      ^~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:38:6: note: 'bool gpioCommandReady' previously defined here
- bool gpioCommandReady = false;
-      ^~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:41:5: error: redefinition of 'int custom_peak_amplitude'
- int custom_peak_amplitude = 0;
-     ^~~~~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:41:5: note: 'int custom_peak_amplitude' previously defined here
- int custom_peak_amplitude = 0;
-     ^~~~~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:42:6: error: redefinition of 'bool custom_peak_requested'
- bool custom_peak_requested = false;
-      ^~~~~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:42:6: note: 'bool custom_peak_requested' previously defined here
- bool custom_peak_requested = false;
-      ^~~~~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino: In function 'void setup()':
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:44:6: error: redefinition of 'void setup()'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino: In function 'void setup()':
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:47:6: error: redefinition of 'void setup()'
  void setup() {
       ^~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:44:6: note: 'void setup()' previously defined here
  void setup() {
       ^~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino: In function 'void loop()':
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:84:6: error: redefinition of 'void loop()'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino: In function 'void loop()':
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:80:6: error: redefinition of 'void loop()'
  void loop() {
       ^~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:84:6: note: 'void loop()' previously defined here
  void loop() {
       ^~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino: In function 'void generatePBTWaveform()':
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:123:6: error: redefinition of 'void generatePBTWaveform()'
- void generatePBTWaveform() {
-      ^~~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:123:6: note: 'void generatePBTWaveform()' previously defined here
- void generatePBTWaveform() {
-      ^~~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino: In function 'void generateCustomPeak(int)':
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:155:6: error: redefinition of 'void generateCustomPeak(int)'
- void generateCustomPeak(int amplitude) {
-      ^~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:154:6: note: 'void generateCustomPeak(int)' previously defined here
- void generateCustomPeak(int amplitude) {
-      ^~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino: In function 'void checkTim100Status()':
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:167:6: error: redefinition of 'void checkTim100Status()'
- void checkTim100Status() {
-      ^~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:166:6: note: 'void checkTim100Status()' previously defined here
- void checkTim100Status() {
-      ^~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino: In function 'void checkTim150Status()':
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:183:6: error: redefinition of 'void checkTim150Status()'
- void checkTim150Status() {
-      ^~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/SICK-App.ino:182:6: note: 'void checkTim150Status()' previously defined here
- void checkTim150Status() {
-      ^~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino: In function 'void handleGPIOCommands()':
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:199:6: error: redefinition of 'void handleGPIOCommands()'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino: In function 'void handleGPIOCommands()':
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:195:6: error: redefinition of 'void handleGPIOCommands()'
  void handleGPIOCommands() {
       ^~~~~~~~~~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:198:6: note: 'void handleGPIOCommands()' previously defined here
  void handleGPIOCommands() {
       ^~~~~~~~~~~~~~~~~~
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino: In function 'void processGPIOCommand(String)':
-/home/sick7/SICK/SICK-App/arduino_pbt_simulator.ino:215:6: error: redefinition of 'void processGPIOCommand(String)'
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino: In function 'void processGPIOCommand(String)':
+/home/sick7/SICK/SICK-App/unified_pbt_lidar.ino:211:6: error: redefinition of 'void processGPIOCommand(String)'
  void processGPIOCommand(String command) {
       ^~~~~~~~~~~~~~~~~~
 /home/sick7/SICK/SICK-App/SICK-App.ino:214:6: note: 'void processGPIOCommand(String)' previously defined here
@@ -227,4 +115,4 @@
 Used platform Version Path
 arduino:avr   1.8.6   /home/sick7/.arduino15/packages/arduino/hardware/avr/1.8.6
 Error during build: exit status 1
-(venv) sick7@raspberrypi:~/SICK/SICK-App $ 
+ERROR: Compilation failed!
