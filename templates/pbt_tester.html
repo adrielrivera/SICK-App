@@ -530,7 +530,7 @@
                     </div>
                     <div class="input-row">
                         <label for="peak-slider">Slider:</label>
-                        <input type="range" id="peak-slider" min="24" max="60" value="30" step="0.1" class="slider" oninput="updateFromSlider()">
+                        <input type="range" id="peak-slider" min="30" max="100" value="50" step="0.1" class="slider" oninput="updateFromSlider()">
                         <span class="slider-value" id="slider-value">30.0</span>
                     </div>
                     <div class="test-buttons">
@@ -764,7 +764,7 @@
         // Update slider when input changes
         document.getElementById('peak-input').addEventListener('input', function() {
             const value = parseFloat(this.value);
-            if (value >= 24 && value <= 60) {
+            if (value >= 30 && value <= 100) {
                 document.getElementById('peak-slider').value = value;
                 document.getElementById('slider-value').textContent = value.toFixed(1);
             }
@@ -789,7 +789,7 @@
         }
         
         function testSpecific() {
-            const values = [20, 24, 30, 35, 40, 45, 50, 55, 60, 65, 70];
+            const values = [30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
             socket.emit('test_specific', { values: values });
         }
         

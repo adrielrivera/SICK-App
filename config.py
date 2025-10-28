@@ -15,7 +15,7 @@ SAMPLES_PER_SEC = 800         # Expected sample rate from Arduino
 # ============================================
 # Envelope detection
 ENVELOPE_ALPHA = 0.12         # Envelope filter coefficient (0-1, lower = smoother)
-TRIGGER_THRESHOLD = 24        # Trigger level for peak detection (ADC counts) - 60% easier (60 * 0.4 = 24)
+TRIGGER_THRESHOLD = 30        # Trigger level for peak detection (ADC counts) - improved sensitivity
 
 # Baseline tracking
 BASELINE_ALPHA = 0.001        # Baseline tracking coefficient (0-1, lower = more stable)

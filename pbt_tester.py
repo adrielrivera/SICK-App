@@ -10,10 +10,10 @@ from collections import deque
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
-# Same scoring logic as app_combined.py
-A_MIN, A_MAX = 24, 60
-W_MIN_MS, W_MAX_MS = 10, 100
-TRIGGER_THRESHOLD = 24
+# Improved proportional scoring logic
+A_MIN, A_MAX = 30, 100  # Wider range: 30-100 ADC
+W_MIN_MS, W_MAX_MS = 10, 100  # Pulse width: 10-100ms
+TRIGGER_THRESHOLD = 30  # Higher threshold for better sensitivity
 
 # Serial connection for Arduino
 SERIAL_PORT = "/dev/ttyUSB0"
@@ -64,6 +64,13 @@ def get_score_level(pulse_width):
         return "MEDIUM SCORE"
     else:
         return "LOW SCORE (Long pulse)"
+
+def calculate_arcade_score(peak):
+    """Calculate proportional arcade score from peak value."""
+    # Map peak (30-100 ADC) to score (100-500 points)
+    # Higher peak = shorter pulse = higher score
+    score = int(map_linear_inverse(peak, A_MIN, A_MAX, 100, 500))
+    return max(100, min(500, score))  # Clamp to 100-500 range
 
 def arcade_button_press(ser, duration_ms):
     """Send arcade button press to Arduino."""
@@ -249,8 +256,9 @@ def handle_test_peak(data):
     try:
         peak = float(data['peak'])
         
-        # Calculate pulse width
+        # Calculate pulse width and arcade score
         pulse_width = calculate_pulse_width(peak)
+        arcade_score = calculate_arcade_score(peak) if peak >= TRIGGER_THRESHOLD else 0
         
         # Determine if it would trigger
         triggered = peak >= TRIGGER_THRESHOLD
@@ -262,6 +270,7 @@ def handle_test_peak(data):
         emit('peak_result', {
             'peak': peak,
             'pulse_width': pulse_width,
+            'arcade_score': arcade_score,
             'triggered': triggered,
             'threshold': TRIGGER_THRESHOLD,
             'score_level': score_level,
@@ -285,12 +294,14 @@ def handle_test_range(data):
         current = start
         while current <= end:
             pulse_width = calculate_pulse_width(current)
+            arcade_score = calculate_arcade_score(current) if current >= TRIGGER_THRESHOLD else 0
             triggered = current >= TRIGGER_THRESHOLD
             score_level = get_score_level(pulse_width) if triggered else "NO SCORE"
             
             results.append({
                 'peak': current,
                 'pulse_width': pulse_width,
+                'arcade_score': arcade_score,
                 'triggered': triggered,
                 'score_level': score_level
             })
@@ -312,17 +323,19 @@ def handle_test_range(data):
 def handle_test_specific(data):
     """Test specific peak values."""
     try:
-        values = data.get('values', [20, 24, 30, 35, 40, 45, 50, 55, 60, 65, 70])
+        values = data.get('values', [30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100])
         
         results = []
         for peak in values:
             pulse_width = calculate_pulse_width(peak)
+            arcade_score = calculate_arcade_score(peak) if peak >= TRIGGER_THRESHOLD else 0
             triggered = peak >= TRIGGER_THRESHOLD
             score_level = get_score_level(pulse_width) if triggered else "NO SCORE"
             
             results.append({
                 'peak': peak,
                 'pulse_width': pulse_width,
+                'arcade_score': arcade_score,
                 'triggered': triggered,
                 'score_level': score_level
             })
@@ -350,9 +363,10 @@ def handle_simulate_hit(data):
             })
             return
         
-        # Calculate pulse width
+        # Calculate pulse width and arcade score
         pulse_width = calculate_pulse_width(peak)
         score_level = get_score_level(pulse_width)
+        arcade_score = calculate_arcade_score(peak)
         
         # Send real arcade signal if Arduino connected
         arcade_success = False
@@ -365,14 +379,16 @@ def handle_simulate_hit(data):
             'peak': peak,
             'pulse_width': pulse_width,
             'score_level': score_level,
+            'arcade_score': arcade_score,
             'arcade_signal': arcade_success,
             'sequence': [
                 f"1. Peak detected: {peak:.1f} ADC counts",
                 f"2. Above threshold: {TRIGGER_THRESHOLD} ✓",
                 f"3. Pulse width calculated: {pulse_width:.1f}ms",
-                f"4. Arcade signal sent: {'SUCCESS' if arcade_success else 'FAILED'}",
-                f"5. Score level: {score_level}",
-                f"6. Arduino status: {'Connected' if ser and not ser.closed else 'Disconnected'}"
+                f"4. Arcade score: {arcade_score} points",
+                f"5. Arcade signal sent: {'SUCCESS' if arcade_success else 'FAILED'}",
+                f"6. Score level: {score_level}",
+                f"7. Arduino status: {'Connected' if ser and not ser.closed else 'Disconnected'}"
             ]
         })
         

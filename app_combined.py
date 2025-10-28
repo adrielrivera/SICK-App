@@ -43,7 +43,7 @@ cap_end = 0.0
 # GPIO pulse parameters (from pbt_pulse_plot.py)
 CAPTURE_MS = 250
 REFRACTORY_MS = 200
-A_MIN, A_MAX = 24, 60  # Cover your actual peak range (24-60) - adjusted for 60% easier threshold
+A_MIN, A_MAX = 30, 100  # Improved proportional range (30-100) for better scoring
 W_MIN_MS, W_MAX_MS = 10, 100  # Shorter max pulse for better high scores
 REARM_LEVEL = TRIGGER_THRESHOLD * 0.4
 
