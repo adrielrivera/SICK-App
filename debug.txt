@@ -1,14 +1,34 @@
-# Install Arduino CLI
-curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+sick7@raspberrypi:~/SICK/SICK-App $ arduino-cli compile --fqbn arduino:avr:uno arduino_pbt_simulator.ino
+Can't open sketch: main file missing from sketch: /home/sick7/SICK/SICK-App/SICK-App.ino
+sick7@raspberrypi:~/SICK/SICK-App $ mv arduino_pbt_simulator.ino SICK-App.ino
+sick7@raspberrypi:~/SICK/SICK-App $ arduino-cli compile --fqbn arduino:avr:uno SICK-App.ino
+/home/sick7/SICK/SICK-App/signal_simulator.ino:4:11: error: redefinition of 'const int SAMPLES_PER_SEC'
+ const int SAMPLES_PER_SEC = 800;
+           ^~~~~~~~~~~~~~~
+/home/sick7/SICK/SICK-App/SICK-App.ino:15:11: note: 'const int SAMPLES_PER_SEC' previously defined here
+ const int SAMPLES_PER_SEC = 800;
+           ^~~~~~~~~~~~~~~
+/home/sick7/SICK/SICK-App/signal_simulator.ino:5:21: error: redefinition of 'const long unsigned int SAMPLE_US'
+ const unsigned long SAMPLE_US = 1000000UL / SAMPLES_PER_SEC;
+                     ^~~~~~~~~
+/home/sick7/SICK/SICK-App/SICK-App.ino:16:21: note: 'const long unsigned int SAMPLE_US' previously defined here
+ const unsigned long SAMPLE_US = 1000000UL / SAMPLES_PER_SEC;
+                     ^~~~~~~~~
+/home/sick7/SICK/SICK-App/signal_simulator.ino: In function 'void setup()':
+/home/sick7/SICK/SICK-App/signal_simulator.ino:28:6: error: redefinition of 'void setup()'
+ void setup() {
+      ^~~~~
+/home/sick7/SICK/SICK-App/SICK-App.ino:51:6: note: 'void setup()' previously defined here
+ void setup() {
+      ^~~~~
+/home/sick7/SICK/SICK-App/signal_simulator.ino: In function 'void loop()':
+/home/sick7/SICK/SICK-App/signal_simulator.ino:35:6: error: redefinition of 'void loop()'
+ void loop() {
+      ^~~~
+/home/sick7/SICK/SICK-App/SICK-App.ino:92:6: note: 'void loop()' previously defined here
+ void loop() {
+      ^~~~
 
-# Add to PATH
-echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
-source ~/.bashrc
-
-# Install Arduino core
-arduino-cli core install arduino:avr
-
-# Upload the simulator
-cd /Users/adrielrivera/Documents/SICK7/SICK-App
-arduino-cli compile --fqbn arduino:avr:uno arduino_pbt_simulator.ino
-arduino-cli upload -p /dev/ttyUSB0 --fqbn arduino:avr:uno arduino_pbt_simulator.ino
+Used platform Version Path
+arduino:avr   1.8.6   /home/sick7/.arduino15/packages/arduino/hardware/avr/1.8.6
+Error during build: exit status 1
