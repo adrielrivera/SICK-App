@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 PBT Scoring System Tester
-Allows testing different peak values without Arduino
-Test the scoring system with fake peak inputs
+Test the scoring system with fake peak inputs and send real signals to arcade
 """
 import time
+import serial
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
@@ -12,6 +12,11 @@ from flask_socketio import SocketIO, emit
 A_MIN, A_MAX = 24, 60
 W_MIN_MS, W_MAX_MS = 10, 100
 TRIGGER_THRESHOLD = 24
+
+# Serial connection for Arduino
+SERIAL_PORT = "/dev/ttyUSB0"
+BAUD = 115200
+ser = None
 
 def clamp(x, lo, hi):
     """Clamp value between min and max."""
@@ -36,11 +41,51 @@ def calculate_pulse_width(peak):
 def get_score_level(pulse_width):
     """Determine score level based on pulse width."""
     if pulse_width < 20:
-        return "HIGH SCORE (Short pulse - Quick hit)"
+        return "HIGH SCORE (Short pulse)"
     elif pulse_width < 50:
-        return "MEDIUM SCORE (Medium pulse)"
+        return "MEDIUM SCORE"
     else:
-        return "LOW SCORE (Long pulse - Slow hit)"
+        return "LOW SCORE (Long pulse)"
+
+def arcade_button_press(ser, duration_ms):
+    """Send arcade button press to Arduino."""
+    try:
+        # Pin 6 HIGH (press start)
+        ser.write(b"PIN6_HIGH\n")
+        ser.flush()
+        
+        # Wait for duration
+        time.sleep(duration_ms / 1000.0)
+        
+        # Pin 5 LOW (press confirmed)
+        ser.write(b"PIN5_LOW\n")
+        ser.flush()
+        
+        # Hold active state
+        time.sleep(0.100)
+        
+        # Reset pins
+        ser.write(b"PIN5_HIGH\n")
+        ser.write(b"PIN6_LOW\n")
+        ser.flush()
+        
+        return True
+    except Exception as e:
+        print(f"Error sending arcade signal: {e}")
+        return False
+
+def init_arduino():
+    """Initialize Arduino connection."""
+    global ser
+    try:
+        ser = serial.Serial(SERIAL_PORT, BAUD, timeout=1)
+        time.sleep(0.2)
+        ser.reset_input_buffer()
+        print(f"Arduino connected on {SERIAL_PORT}")
+        return True
+    except Exception as e:
+        print(f"Arduino connection failed: {e}")
+        return False
 
 # Web interface for testing
 app = Flask(__name__)
@@ -166,7 +211,7 @@ def handle_test_specific(data):
 
 @socketio.on('simulate_hit')
 def handle_simulate_hit(data):
-    """Simulate a complete PBT hit sequence."""
+    """Simulate a complete PBT hit sequence with real arcade signals."""
     try:
         peak = float(data['peak'])
         
@@ -181,42 +226,78 @@ def handle_simulate_hit(data):
         pulse_width = calculate_pulse_width(peak)
         score_level = get_score_level(pulse_width)
         
+        # Send real arcade signal if Arduino connected
+        arcade_success = False
+        if ser and not ser.closed:
+            arcade_success = arcade_button_press(ser, pulse_width)
+        
         # Simulate the complete sequence
         emit('simulation_result', {
             'success': True,
             'peak': peak,
             'pulse_width': pulse_width,
             'score_level': score_level,
+            'arcade_signal': arcade_success,
             'sequence': [
                 f"1. Peak detected: {peak:.1f} ADC counts",
                 f"2. Above threshold: {TRIGGER_THRESHOLD} ✓",
                 f"3. Pulse width calculated: {pulse_width:.1f}ms",
-                f"4. Arcade button press: {pulse_width:.1f}ms duration",
+                f"4. Arcade signal sent: {'SUCCESS' if arcade_success else 'FAILED'}",
                 f"5. Score level: {score_level}",
-                f"6. PBT_HIT sent to Arduino",
-                f"7. Credit tracking updated"
+                f"6. Arduino status: {'Connected' if ser and not ser.closed else 'Disconnected'}"
             ]
         })
         
-        print(f"Simulation: Peak {peak:.1f} → {pulse_width:.1f}ms pulse → {score_level}")
+        print(f"Hit: Peak {peak:.1f} → {pulse_width:.1f}ms pulse → {score_level} → Arcade: {'OK' if arcade_success else 'FAIL'}")
         
     except (ValueError, KeyError) as e:
         emit('error', {'message': f'Invalid simulation parameters: {e}'})
 
+@socketio.on('send_arcade_signal')
+def handle_send_arcade_signal(data):
+    """Send arcade signal directly."""
+    try:
+        pulse_width = float(data['pulse_width'])
+        
+        if ser and not ser.closed:
+            success = arcade_button_press(ser, pulse_width)
+            emit('arcade_signal_result', {
+                'success': success,
+                'pulse_width': pulse_width,
+                'message': f'Arcade signal sent: {pulse_width:.1f}ms - {"SUCCESS" if success else "FAILED"}'
+            })
+            print(f"Direct arcade signal: {pulse_width:.1f}ms - {'SUCCESS' if success else 'FAILED'}")
+        else:
+            emit('arcade_signal_result', {
+                'success': False,
+                'pulse_width': pulse_width,
+                'message': 'Arduino not connected'
+            })
+        
+    except (ValueError, KeyError) as e:
+        emit('error', {'message': f'Invalid pulse width: {e}'})
+
 if __name__ == '__main__':
     print("=" * 60)
-    print("SICK7 PBT Scoring System Tester")
+    print("SICK7 PBT Tester - Sends Real Arcade Signals")
     print("=" * 60)
-    print(f"Trigger Threshold: {TRIGGER_THRESHOLD} ADC counts")
-    print(f"Peak Range: {A_MIN}-{A_MAX} ADC counts")
+    print(f"Trigger: {TRIGGER_THRESHOLD} ADC")
+    print(f"Peak Range: {A_MIN}-{A_MAX} ADC")
     print(f"Pulse Range: {W_MIN_MS}-{W_MAX_MS} ms")
-    print(f"Mapping: INVERTED (High peak → Short pulse)")
-    print(f"Web interface: http://localhost:5002")
+    print(f"Web: http://localhost:5002")
     print("=" * 60)
+    
+    # Try to connect to Arduino
+    arduino_connected = init_arduino()
+    if not arduino_connected:
+        print("WARNING: Arduino not connected - testing without arcade signals")
     
     try:
         socketio.run(app, host='0.0.0.0', port=5002, debug=False, allow_unsafe_werkzeug=True)
     except KeyboardInterrupt:
-        print("\nShutting down PBT Tester...")
+        print("\nStopping PBT Tester...")
     except Exception as e:
-        print(f"Error starting PBT Tester: {e}")
+        print(f"Error: {e}")
+    finally:
+        if ser and not ser.closed:
+            ser.close()

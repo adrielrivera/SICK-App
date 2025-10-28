@@ -3,7 +3,7 @@
 # Starts the PBT testing system for scoring validation
 
 echo "=========================================="
-echo "SICK7 PBT Scoring Tester"
+echo "SICK7 PBT Tester - Sends Real Arcade Signals"
 echo "=========================================="
 
 # Check if virtual environment exists
@@ -33,11 +33,10 @@ echo "Starting PBT Scoring Tester..."
 echo "Web interface: http://localhost:5002"
 echo ""
 echo "Features:"
-echo "  • Test single peak values"
-echo "  • Test peak ranges (24-60)"
-echo "  • Simulate complete hit sequences"
-echo "  • Visual scoring feedback"
-echo "  • Real-time pulse width calculation"
+echo "  • Test peak values and scoring"
+echo "  • Send real signals to arcade"
+echo "  • Direct pulse width control"
+echo "  • Arduino GPIO control"
 echo ""
 echo "Press Ctrl+C to stop"
 echo "=========================================="

@@ -360,8 +360,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 SICK7 PBT Scoring Tester</h1>
-            <p>Test the PBT scoring system with fake peak inputs</p>
+            <h1>PBT Tester</h1>
+            <p>Test PBT scoring and send signals to arcade</p>
             <div>
                 <span class="status-indicator" id="status-indicator"></span>
                 <span id="connection-status">Connecting...</span>
@@ -370,7 +370,7 @@
         
         <div class="content">
             <div class="config-panel">
-                <h3>⚙️ System Configuration</h3>
+                <h3>Settings</h3>
                 <div class="config-grid" id="config-grid">
                     <!-- Configuration will be loaded here -->
                 </div>
@@ -378,25 +378,37 @@
             
             <div class="input-section">
                 <div class="input-group">
-                    <h3>🎯 Single Peak Test</h3>
+                    <h3>Test Peak</h3>
                     <div class="input-row">
-                        <label for="peak-input">Peak Value:</label>
+                        <label for="peak-input">Peak:</label>
                         <input type="number" id="peak-input" min="0" max="100" value="30" step="0.1">
-                        <span>ADC counts</span>
+                        <span>ADC</span>
                     </div>
                     <div class="input-row">
-                        <label for="peak-slider">Peak Slider:</label>
+                        <label for="peak-slider">Slider:</label>
                         <input type="range" id="peak-slider" min="24" max="60" value="30" step="0.1" class="slider" oninput="updateFromSlider()">
                         <span class="slider-value" id="slider-value">30.0</span>
                     </div>
                     <div class="test-buttons">
-                        <button onclick="testPeak()">Test Peak</button>
-                        <button class="simulate-btn" onclick="simulateHit()">Simulate Hit</button>
+                        <button onclick="testPeak()">Test</button>
+                        <button class="simulate-btn" onclick="simulateHit()">Send to Arcade</button>
                     </div>
                 </div>
                 
                 <div class="input-group">
-                    <h3>📊 Range Testing</h3>
+                    <h3>Direct Arcade Signal</h3>
+                    <div class="input-row">
+                        <label for="pulse-input">Pulse Width:</label>
+                        <input type="number" id="pulse-input" min="10" max="100" value="50" step="1">
+                        <span>ms</span>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="simulate-btn" onclick="sendArcadeSignal()">Send Signal</button>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <h3>Test Range</h3>
                     <div class="input-row">
                         <label for="range-start">Start:</label>
                         <input type="number" id="range-start" min="0" max="100" value="24" step="1">
@@ -414,23 +426,23 @@
                     </div>
                     <div class="test-buttons">
                         <button class="test-btn" onclick="testRange()">Test Range</button>
-                        <button class="test-btn" onclick="testSpecific()">Test Specific Values</button>
+                        <button class="test-btn" onclick="testSpecific()">Test Values</button>
                     </div>
                 </div>
             </div>
             
             <div id="result" class="result">
-                <h3>📈 Test Results</h3>
+                <h3>Results</h3>
                 <div id="result-content"></div>
             </div>
             
             <div id="range-results" class="range-results">
-                <h3>📊 Range Test Results</h3>
+                <h3>Range Results</h3>
                 <div id="range-content"></div>
             </div>
             
             <div id="simulation-result" class="simulation-sequence">
-                <h3>🎬 Hit Simulation</h3>
+                <h3>Arcade Signal</h3>
                 <div id="simulation-content"></div>
             </div>
             
@@ -517,6 +529,11 @@
         function testSpecific() {
             const values = [20, 24, 30, 35, 40, 45, 50, 55, 60, 65, 70];
             socket.emit('test_specific', { values: values });
+        }
+        
+        function sendArcadeSignal() {
+            const pulseWidth = parseFloat(document.getElementById('pulse-input').value);
+            socket.emit('send_arcade_signal', { pulse_width: pulseWidth });
         }
         
         // Result handlers
@@ -653,20 +670,27 @@
             const container = document.getElementById('simulation-content');
             
             if (data.success) {
+                const arcadeStatus = data.arcade_signal ? 'SUCCESS' : 'FAILED';
+                const arcadeColor = data.arcade_signal ? '#28a745' : '#dc3545';
+                
                 container.innerHTML = `
                     <div class="result-item">
-                        <span class="result-label">Peak Value:</span>
-                        <span class="result-value">${data.peak} ADC counts</span>
+                        <span class="result-label">Peak:</span>
+                        <span class="result-value">${data.peak} ADC</span>
                     </div>
                     <div class="result-item">
-                        <span class="result-label">Pulse Width:</span>
+                        <span class="result-label">Pulse:</span>
                         <span class="result-value">${data.pulse_width.toFixed(1)} ms</span>
                     </div>
                     <div class="result-item">
-                        <span class="result-label">Score Level:</span>
+                        <span class="result-label">Score:</span>
                         <span class="result-value">${data.score_level}</span>
                     </div>
-                    <h4>Hit Sequence:</h4>
+                    <div class="result-item">
+                        <span class="result-label">Arcade Signal:</span>
+                        <span class="result-value" style="color: ${arcadeColor};">${arcadeStatus}</span>
+                    </div>
+                    <h4>Steps:</h4>
                     ${data.sequence.map(step => `<div class="sequence-step">${step}</div>`).join('')}
                 `;
             } else {
@@ -677,6 +701,28 @@
                     </div>
                 `;
             }
+            
+            document.getElementById('simulation-result').style.display = 'block';
+            
+            // Hide other result panels
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('range-results').style.display = 'none';
+        });
+        
+        socket.on('arcade_signal_result', (data) => {
+            const container = document.getElementById('simulation-content');
+            const color = data.success ? '#28a745' : '#dc3545';
+            
+            container.innerHTML = `
+                <div class="result-item">
+                    <span class="result-label">Pulse Width:</span>
+                    <span class="result-value">${data.pulse_width} ms</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Status:</span>
+                    <span class="result-value" style="color: ${color};">${data.message}</span>
+                </div>
+            `;
             
             document.getElementById('simulation-result').style.display = 'block';
             
