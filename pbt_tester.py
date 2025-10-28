@@ -421,13 +421,6 @@ def handle_get_waveform_data():
             'pulse_count': pulse_count
         })
 
-@socketio.on('generate_peak')
-def handle_generate_peak():
-    """Generate a random peak in the Arduino simulator."""
-    if ser and not ser.closed:
-        ser.write(b"GENERATE_PEAK\n")
-        ser.flush()
-        print("Generated random peak in Arduino simulator")
 
 @socketio.on('generate_custom_peak')
 def handle_generate_custom_peak(data):

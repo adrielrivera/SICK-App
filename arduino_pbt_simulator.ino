@@ -151,6 +151,7 @@ void generatePBTWaveform() {
   Serial.println(value);
 }
 
+
 void generateCustomPeak(int amplitude) {
   // Generate custom peak with specified amplitude
   custom_peak_amplitude = constrain(amplitude, 0, 200); // Limit to reasonable range

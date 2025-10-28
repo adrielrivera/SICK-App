@@ -34,7 +34,7 @@ echo "Arduino found on: $ARDUINO_PORT"
 
 # Compile and upload
 echo "Compiling Arduino simulator..."
-arduino-cli compile --fqbn arduino:avr:uno arduino_pbt_simulator.ino
+arduino-cli compile --fqbn arduino:avr:uno SICK-App.ino
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Compilation failed!"
@@ -42,7 +42,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Uploading to Arduino..."
-arduino-cli upload -p $ARDUINO_PORT --fqbn arduino:avr:uno arduino_pbt_simulator.ino
+arduino-cli upload -p $ARDUINO_PORT --fqbn arduino:avr:uno SICK-App.ino
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Upload failed!"

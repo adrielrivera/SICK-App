@@ -527,7 +527,6 @@
                 <div class="waveform-controls">
                     <button id="start-sim-btn" class="test-btn">Start Simulation</button>
                     <button id="stop-sim-btn" class="test-btn">Stop Simulation</button>
-                    <button id="generate-peak-btn" class="test-btn">Generate Random Peak</button>
                     <button id="refresh-waveform-btn" class="test-btn">Refresh</button>
                 </div>
                 <div class="custom-peak-controls">
@@ -1093,9 +1092,6 @@
                 document.getElementById('simulation-status').textContent = 'Stopped';
             });
             
-            document.getElementById('generate-peak-btn').addEventListener('click', () => {
-                socket.emit('generate_peak');
-            });
             
             document.getElementById('refresh-waveform-btn').addEventListener('click', () => {
                 socket.emit('get_waveform_data');
