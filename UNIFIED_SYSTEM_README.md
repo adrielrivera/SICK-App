@@ -27,14 +27,14 @@ Serial Port   → /dev/ttyUSB0 (or /dev/ttyACM0)
 ### Step 1: Upload Unified Arduino Code
 **On your Raspberry Pi:**
 ```bash
-cd ~/SICK/SICK-App
-./upload_unified_arduino.sh
+cd ~/SICK-Capstone/SICK-Capstone/arduino_stuff/unified_pbt_lidar
+./upload.sh
 ```
 
 **Note:** This script requires Arduino CLI to be installed on the Pi. If you don't have it, you can upload manually using Arduino IDE or install Arduino CLI first.
 
 #### Alternative: Manual Upload with Arduino IDE
-1. Open `unified_pbt_lidar.ino` in Arduino IDE
+1. Open `~/SICK-Capstone/SICK-Capstone/arduino_stuff/unified_pbt_lidar/unified_pbt_lidar.ino` in Arduino IDE
 2. Select your Arduino board (Arduino Uno)
 3. Select the correct port (`/dev/ttyUSB0` or `/dev/ttyACM0`)
 4. Click Upload
