@@ -48,13 +48,17 @@ def map_linear_inverse(x, x0, x1, y0, y1):
     return y1 - t * (y1 - y0)  # Inverted: subtract instead of add
 
 def calculate_pulse_width(peak):
-    """Calculate pulse width from peak value using the same logic as app_combined.py."""
+    """Calculate pulse width from peak value - map 30-100 ADC to 40-10ms."""
     a_clamped = clamp(peak, A_MIN, A_MAX)
-    width_ms = clamp(
-        map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
-        W_MIN_MS, W_MAX_MS
-    )
-    return width_ms
+    
+    # Map 30-100 ADC to 40-10ms pulse width for better distribution
+    # 30 ADC -> 40ms (good score)
+    # 100 ADC -> 10ms (maximum score)
+    # Linear mapping across the full range
+    
+    width_ms = 40 - (a_clamped - 30) * (30 / 70)  # 30->40ms, 100->10ms
+    
+    return clamp(width_ms, W_MIN_MS, W_MAX_MS)
 
 def get_score_level(pulse_width):
     """Determine score level based on pulse width."""
@@ -65,12 +69,40 @@ def get_score_level(pulse_width):
     else:
         return "LOW SCORE (Long pulse)"
 
+def calculate_arcade_score_from_pulse_width(pulse_width_ms):
+    """Calculate arcade score based on actual pulse width duration."""
+    # Based on your observations with better distribution:
+    # 100ms -> 140 score
+    # 80ms  -> 200 score  
+    # 60ms  -> 280 score
+    # 40ms  -> 380 score
+    # 20ms  -> 450 score
+    # 10ms  -> 500 score
+    
+    if pulse_width_ms >= 100:
+        return 140
+    elif pulse_width_ms >= 80:
+        # Linear interpolation: 100ms->140, 80ms->200
+        return int(140 + (100 - pulse_width_ms) * (60 / 20))
+    elif pulse_width_ms >= 60:
+        # Linear interpolation: 80ms->200, 60ms->280
+        return int(200 + (80 - pulse_width_ms) * (80 / 20))
+    elif pulse_width_ms >= 40:
+        # Linear interpolation: 60ms->280, 40ms->380
+        return int(280 + (60 - pulse_width_ms) * (100 / 20))
+    elif pulse_width_ms >= 20:
+        # Linear interpolation: 40ms->380, 20ms->450
+        return int(380 + (40 - pulse_width_ms) * (70 / 20))
+    elif pulse_width_ms >= 10:
+        # Linear interpolation: 20ms->450, 10ms->500
+        return int(450 + (20 - pulse_width_ms) * (50 / 10))
+    else:
+        return 500  # Very short pulses get max score
+
 def calculate_arcade_score(peak):
-    """Calculate proportional arcade score from peak value."""
-    # Map peak (30-100 ADC) to score (100-500 points)
-    # Higher peak = shorter pulse = higher score
-    score = int(map_linear_inverse(peak, A_MIN, A_MAX, 100, 500))
-    return max(100, min(500, score))  # Clamp to 100-500 range
+    """Calculate arcade score from peak value."""
+    pulse_width = calculate_pulse_width(peak)
+    return calculate_arcade_score_from_pulse_width(pulse_width)
 
 def arcade_button_press(ser, duration_ms):
     """Send arcade button press to Arduino."""
@@ -154,19 +186,17 @@ def process_waveform_data(value):
         
         # Check if capture window ended or envelope dropped
         if current_time >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
-            # Map amplitude to pulse width INVERSELY
-            a_clamped = clamp(peak, A_MIN, A_MAX)
-            width_ms = clamp(
-                map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
-                W_MIN_MS, W_MAX_MS
-            )
+            # Use updated pulse width calculation
+            width_ms = calculate_pulse_width(peak)
+            arcade_score = calculate_arcade_score_from_pulse_width(width_ms)
             
             pulse_count += 1
-            print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f}ms")
+            print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.1f}ms → {arcade_score}pts")
             
             # Send arcade signal if Arduino connected
             if ser and not ser.closed:
                 arcade_button_press(ser, width_ms)
+                print(f"  Arcade signal sent: {width_ms:.1f}ms pulse")
             
             # Wait to re-arm until envelope falls below rearm level
             while envelope >= (TRIGGER_THRESHOLD * 0.4):  # REARM_LEVEL
@@ -227,7 +257,7 @@ def handle_connect():
         'trigger_threshold': TRIGGER_THRESHOLD,
         'peak_range': f"{A_MIN}-{A_MAX}",
         'pulse_range': f"{W_MIN_MS}-{W_MAX_MS}ms",
-        'mapping': "INVERTED (High peak → Short pulse)",
+        'mapping': "30-100 ADC → 40-10ms (Optimized Distribution)",
         'simulation_mode': True,
         'waveform_enabled': True
     })
@@ -274,7 +304,7 @@ def handle_test_peak(data):
             'triggered': triggered,
             'threshold': TRIGGER_THRESHOLD,
             'score_level': score_level,
-            'range': f"{A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms"
+            'range': f"{A_MIN}-{A_MAX} → 40-10ms (Optimized)"
         })
         
         print(f"Test Peak: {peak:.1f} → Pulse: {pulse_width:.0f}ms {'(TRIGGERED)' if triggered else '(Below threshold)'}")
