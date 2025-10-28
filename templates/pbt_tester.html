@@ -382,6 +382,74 @@
             margin-bottom: 15px;
         }
         
+        .waveform-controls-advanced {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .zoom-controls, .display-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .zoom-controls select {
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        
+        .display-controls label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        
+        .waveform-stats {
+            background: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .stat-label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 14px;
+        }
+        
+        .stat-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #007bff;
+            font-size: 16px;
+            min-width: 40px;
+        }
+        
+        .stat-unit {
+            color: #6c757d;
+            font-size: 12px;
+        }
+        
         .waveform-container {
             background: #000;
             border-radius: 5px;
@@ -566,6 +634,57 @@
                         <span class="info-value" id="armed-status">Yes</span>
                     </div>
                 </div>
+                <div class="waveform-controls-advanced">
+                    <div class="zoom-controls">
+                        <label for="zoom-level">Zoom:</label>
+                        <select id="zoom-level">
+                            <option value="1">1x (Full Range)</option>
+                            <option value="2">2x (512±256)</option>
+                            <option value="4">4x (512±128)</option>
+                            <option value="8">8x (512±64)</option>
+                            <option value="16">16x (512±32)</option>
+                        </select>
+                        <button id="reset-zoom-btn" class="test-btn">Reset Zoom</button>
+                    </div>
+                    <div class="display-controls">
+                        <label>
+                            <input type="checkbox" id="show-values" checked> Show Values
+                        </label>
+                        <label>
+                            <input type="checkbox" id="show-grid" checked> Show Grid
+                        </label>
+                        <label>
+                            <input type="checkbox" id="auto-scale" checked> Auto Scale
+                        </label>
+                    </div>
+                </div>
+                <div class="waveform-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Current Value:</span>
+                        <span class="stat-value" id="current-value">512</span>
+                        <span class="stat-unit">ADC</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Baseline:</span>
+                        <span class="stat-value" id="baseline-value">512</span>
+                        <span class="stat-unit">ADC</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Envelope:</span>
+                        <span class="stat-value" id="envelope-value">0</span>
+                        <span class="stat-unit">ADC</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Peak:</span>
+                        <span class="stat-value" id="peak-value">0</span>
+                        <span class="stat-unit">ADC</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Threshold:</span>
+                        <span class="stat-value" id="threshold-value">24</span>
+                        <span class="stat-unit">ADC</span>
+                    </div>
+                </div>
                 <div class="waveform-container">
                     <canvas id="waveform-canvas" width="800" height="300"></canvas>
                 </div>
@@ -686,6 +805,15 @@
         let timeData = [];
         let baseline = 512;
         let threshold = 24;
+        let currentValue = 512;
+        let envelopeValue = 0;
+        let peakValue = 0;
+        
+        // Zoom and display settings
+        let zoomLevel = 1;
+        let showValues = true;
+        let showGrid = true;
+        let autoScale = true;
         
         // Initialize waveform canvas
         function initWaveform() {
@@ -715,27 +843,57 @@
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, width, height);
             
+            // Calculate zoom range
+            let minValue, maxValue;
+            if (autoScale && waveformData.length > 0) {
+                const recentData = waveformData.slice(-1000); // Last 1000 samples
+                const min = Math.min(...recentData);
+                const max = Math.max(...recentData);
+                const range = max - min;
+                const padding = range * 0.1; // 10% padding
+                minValue = Math.max(0, min - padding);
+                maxValue = Math.min(1023, max + padding);
+            } else {
+                // Use zoom level
+                const range = 512 / zoomLevel;
+                minValue = Math.max(0, baseline - range);
+                maxValue = Math.min(1023, baseline + range);
+            }
+            
             // Draw grid
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for (let i = 0; i <= 10; i++) {
-                const y = (height / 10) * i;
-                ctx.moveTo(0, y);
-                ctx.lineTo(width, y);
+            if (showGrid) {
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let i = 0; i <= 10; i++) {
+                    const y = (height / 10) * i;
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                }
+                for (let i = 0; i <= 20; i++) {
+                    const x = (width / 20) * i;
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                }
+                ctx.stroke();
+                
+                // Draw value labels
+                if (showValues) {
+                    ctx.fillStyle = '#666';
+                    ctx.font = '10px monospace';
+                    for (let i = 0; i <= 10; i++) {
+                        const value = maxValue - (maxValue - minValue) * (i / 10);
+                        const y = (height / 10) * i + 15;
+                        ctx.fillText(Math.round(value).toString(), 5, y);
+                    }
+                }
             }
-            for (let i = 0; i <= 20; i++) {
-                const x = (width / 20) * i;
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, height);
-            }
-            ctx.stroke();
             
             // Draw baseline
             ctx.strokeStyle = '#28a745';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            const baselineY = height - (baseline / 1023) * height;
+            const baselineY = height - ((baseline - minValue) / (maxValue - minValue)) * height;
             ctx.moveTo(0, baselineY);
             ctx.lineTo(width, baselineY);
             ctx.stroke();
@@ -745,7 +903,7 @@
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
-            const thresholdY = height - ((baseline + threshold) / 1023) * height;
+            const thresholdY = height - ((baseline + threshold - minValue) / (maxValue - minValue)) * height;
             ctx.moveTo(0, thresholdY);
             ctx.lineTo(width, thresholdY);
             ctx.stroke();
@@ -763,7 +921,8 @@
                 
                 for (let i = 0; i < dataLength; i++) {
                     const x = i * stepX;
-                    const y = height - (waveformData[startIndex + i] / 1023) * height;
+                    const value = waveformData[startIndex + i];
+                    const y = height - ((value - minValue) / (maxValue - minValue)) * height;
                     
                     if (i === 0) {
                         ctx.moveTo(x, y);
@@ -786,7 +945,8 @@
                 
                 for (let i = 0; i < dataLength; i++) {
                     const x = i * stepX;
-                    const y = height - ((baseline + envelopeData[startIndex + i]) / 1023) * height;
+                    const value = baseline + envelopeData[startIndex + i];
+                    const y = height - ((value - minValue) / (maxValue - minValue)) * height;
                     
                     if (i === 0) {
                         ctx.moveTo(x, y);
@@ -795,6 +955,20 @@
                     }
                 }
                 ctx.stroke();
+            }
+            
+            // Draw current value indicator
+            if (showValues && waveformData.length > 0) {
+                const currentY = height - ((currentValue - minValue) / (maxValue - minValue)) * height;
+                ctx.fillStyle = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(width - 20, currentY, 3, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Current value text
+                ctx.fillStyle = '#00ff00';
+                ctx.font = '12px monospace';
+                ctx.fillText(currentValue.toString(), width - 60, currentY - 5);
             }
         }
         
@@ -806,10 +980,24 @@
             baseline = data.baseline || 512;
             threshold = 24; // From config
             
+            // Update current values
+            if (waveformData.length > 0) {
+                currentValue = waveformData[waveformData.length - 1];
+            }
+            envelopeValue = data.envelope_val || 0;
+            peakValue = data.peak || 0;
+            
             // Update info display
             document.getElementById('sample-count').textContent = data.sample_count || 0;
             document.getElementById('pulse-count').textContent = data.pulse_count || 0;
             document.getElementById('armed-status').textContent = data.armed ? 'Yes' : 'No';
+            
+            // Update stats display
+            document.getElementById('current-value').textContent = currentValue;
+            document.getElementById('baseline-value').textContent = Math.round(baseline);
+            document.getElementById('envelope-value').textContent = Math.round(envelopeValue);
+            document.getElementById('peak-value').textContent = Math.round(peakValue);
+            document.getElementById('threshold-value').textContent = threshold;
             
             // Redraw waveform
             drawWaveform();
@@ -1104,6 +1292,39 @@
                 } else {
                     alert('Peak amplitude must be between 0 and 200 ADC');
                 }
+            });
+            
+            // Advanced controls
+            document.getElementById('zoom-level').addEventListener('change', (e) => {
+                zoomLevel = parseInt(e.target.value);
+                autoScale = false;
+                drawWaveform();
+            });
+            
+            document.getElementById('reset-zoom-btn').addEventListener('click', () => {
+                zoomLevel = 1;
+                autoScale = true;
+                document.getElementById('zoom-level').value = '1';
+                drawWaveform();
+            });
+            
+            document.getElementById('show-values').addEventListener('change', (e) => {
+                showValues = e.target.checked;
+                drawWaveform();
+            });
+            
+            document.getElementById('show-grid').addEventListener('change', (e) => {
+                showGrid = e.target.checked;
+                drawWaveform();
+            });
+            
+            document.getElementById('auto-scale').addEventListener('change', (e) => {
+                autoScale = e.target.checked;
+                if (autoScale) {
+                    document.getElementById('zoom-level').value = '1';
+                    zoomLevel = 1;
+                }
+                drawWaveform();
             });
             
             // Request initial waveform data
