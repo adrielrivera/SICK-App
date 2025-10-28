@@ -641,7 +641,7 @@
                             <option value="1">1x (Full Range)</option>
                             <option value="2">2x (512±256)</option>
                             <option value="4">4x (512±128)</option>
-                            <option value="8">8x (512±64)</option>
+                            <option value="8" selected>8x (512±64)</option>
                             <option value="16">16x (512±32)</option>
                         </select>
                         <button id="reset-zoom-btn" class="test-btn">Reset Zoom</button>
@@ -654,7 +654,7 @@
                             <input type="checkbox" id="show-grid" checked> Show Grid
                         </label>
                         <label>
-                            <input type="checkbox" id="auto-scale" checked> Auto Scale
+                            <input type="checkbox" id="auto-scale"> Auto Scale
                         </label>
                     </div>
                 </div>
@@ -810,10 +810,10 @@
         let peakValue = 0;
         
         // Zoom and display settings
-        let zoomLevel = 1;
+        let zoomLevel = 8;  // Default to 8x zoom for PBT testing
         let showValues = true;
         let showGrid = true;
-        let autoScale = true;
+        let autoScale = false;  // Default to manual zoom
         
         // Initialize waveform canvas
         function initWaveform() {
@@ -847,12 +847,23 @@
             let minValue, maxValue;
             if (autoScale && waveformData.length > 0) {
                 const recentData = waveformData.slice(-1000); // Last 1000 samples
-                const min = Math.min(...recentData);
-                const max = Math.max(...recentData);
-                const range = max - min;
-                const padding = range * 0.1; // 10% padding
-                minValue = Math.max(0, min - padding);
-                maxValue = Math.min(1023, max + padding);
+                
+                // Only auto-scale if there are significant peaks (above threshold)
+                const significantData = recentData.filter(value => Math.abs(value - baseline) > threshold);
+                
+                if (significantData.length > 10) { // Only if we have enough peak data
+                    const min = Math.min(...significantData);
+                    const max = Math.max(...significantData);
+                    const range = max - min;
+                    const padding = range * 0.2; // 20% padding
+                    minValue = Math.max(0, min - padding);
+                    maxValue = Math.min(1023, max + padding);
+                } else {
+                    // No significant peaks, use default zoom
+                    const range = 512 / zoomLevel;
+                    minValue = Math.max(0, baseline - range);
+                    maxValue = Math.min(1023, baseline + range);
+                }
             } else {
                 // Use zoom level
                 const range = 512 / zoomLevel;
@@ -1302,9 +1313,10 @@
             });
             
             document.getElementById('reset-zoom-btn').addEventListener('click', () => {
-                zoomLevel = 1;
-                autoScale = true;
-                document.getElementById('zoom-level').value = '1';
+                zoomLevel = 8;
+                autoScale = false;
+                document.getElementById('zoom-level').value = '8';
+                document.getElementById('auto-scale').checked = false;
                 drawWaveform();
             });
             
