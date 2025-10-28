@@ -1,32 +1,45 @@
 #!/bin/bash
-# Start the combined SICK7 app with web interface and GPIO pulse output
+# Start the combined SICK7 app with PBT sensor + LiDAR monitoring + GPIO control
+
+echo "=========================================="
+echo "SICK7 Unified System (PBT + LiDAR + GPIO)"
+echo "=========================================="
 
 # Activate virtual environment if it exists
 if [ -d "venv" ]; then
     echo "Activating virtual environment..."
     source venv/bin/activate
 else
-    echo "WARNING: No virtual environment found"
+    echo "ERROR: Virtual environment not found!"
+    echo "Please run: python3 -m venv venv"
+    echo "Then: source venv/bin/activate"
+    echo "Then: pip install -r requirements.txt"
+    exit 1
 fi
 
-# Check if pigpio module is installed
-if ! python3 -c "import pigpio" 2>/dev/null; then
-    echo "pigpio module not found. Installing..."
-    pip install pigpio
+# Check if required packages are installed
+echo "Checking dependencies..."
+python3 -c "import flask, flask_socketio, serial" 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "ERROR: Required packages not installed!"
+    echo "Installing requirements..."
+    pip install -r requirements.txt
 fi
 
-# Make sure pigpio daemon is running
-echo "Starting pigpio daemon..."
-sudo systemctl start pigpiod
-sleep 1
-
-# Check if daemon started successfully
-if ! systemctl is-active --quiet pigpiod; then
-    echo "WARNING: pigpiod failed to start. GPIO pulses will be disabled."
-    echo "Try: sudo apt-get install pigpio"
+# Check if Arduino is connected
+echo "Checking Arduino connection..."
+if [ ! -e "/dev/ttyUSB0" ] && [ ! -e "/dev/ttyACM0" ]; then
+    echo "WARNING: No Arduino detected on /dev/ttyUSB0 or /dev/ttyACM0"
+    echo "System will start but may not work properly"
 fi
 
 # Run the combined app
-echo "Starting SICK7 App..."
+echo "Starting SICK7 Unified System..."
+echo "Web interface: http://localhost:5000"
+echo "Features: PBT sensor + LiDAR monitoring + GPIO control"
+echo ""
+echo "Press Ctrl+C to stop"
+echo "=========================================="
+
 python3 app_combined.py
 
