@@ -56,3 +56,4 @@ LiDAR WebSocket: ws://localhost:5001
 
 Press Ctrl+C to stop both systems
 ==========================================
+test
