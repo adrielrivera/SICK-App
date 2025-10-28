@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-PBT Scoring System Tester
-Test the scoring system with fake peak inputs and send real signals to arcade
+PBT Scoring System Tester with Real Waveform Simulation
+Test the scoring system with realistic PBT waveforms and send real signals to arcade
 """
 import time
 import serial
+import threading
+from collections import deque
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
@@ -17,6 +19,22 @@ TRIGGER_THRESHOLD = 24
 SERIAL_PORT = "/dev/ttyUSB0"
 BAUD = 115200
 ser = None
+
+# Waveform data for real-time display
+waveform_data = deque(maxlen=4000)  # 5 seconds at 800Hz
+envelope_data = deque(maxlen=4000)
+time_data = deque(maxlen=4000)
+baseline = 512.0
+envelope = 0.0
+sample_count = 0
+armed = True
+peak = 0.0
+cap_end = 0.0
+pulse_count = 0
+
+# Threading
+data_lock = threading.Lock()
+serial_running = False
 
 def clamp(x, lo, hi):
     """Clamp value between min and max."""
@@ -87,6 +105,101 @@ def init_arduino():
         print(f"Arduino connection failed: {e}")
         return False
 
+def read_one_int(ser):
+    """Read one line and parse int; return None on empty/invalid."""
+    try:
+        s = ser.readline().decode(errors="ignore").strip()
+        if not s:
+            return None
+        
+        # Skip non-numeric data (system messages)
+        if not s.isdigit():
+            return None
+            
+        return int(s)
+    except (ValueError, UnicodeDecodeError):
+        return None
+
+def process_waveform_data(value):
+    """Process waveform data through the same algorithm as real PBT."""
+    global baseline, envelope, sample_count, armed, peak, cap_end, pulse_count
+    
+    sample_count += 1
+    current_time = time.time()
+    
+    # Update baseline and envelope (same as app_combined.py)
+    baseline = (1 - 0.001) * baseline + 0.001 * value  # BASELINE_ALPHA = 0.001
+    xmag = abs(value - baseline)
+    envelope = (1 - 0.12) * envelope + 0.12 * xmag     # ENVELOPE_ALPHA = 0.12
+    
+    # Peak detection logic (same as app_combined.py)
+    if armed:
+        # Check for trigger
+        if envelope > TRIGGER_THRESHOLD:
+            armed = False
+            peak = envelope
+            cap_end = current_time + (250 / 1000.0)  # CAPTURE_MS = 250
+            print(f"Peak detected: {envelope:.1f} ADC")
+    else:
+        # Capture peak during capture window
+        if envelope > peak:
+            peak = envelope
+        
+        # Check if capture window ended or envelope dropped
+        if current_time >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
+            # Map amplitude to pulse width INVERSELY
+            a_clamped = clamp(peak, A_MIN, A_MAX)
+            width_ms = clamp(
+                map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
+                W_MIN_MS, W_MAX_MS
+            )
+            
+            pulse_count += 1
+            print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f}ms")
+            
+            # Send arcade signal if Arduino connected
+            if ser and not ser.closed:
+                arcade_button_press(ser, width_ms)
+            
+            # Wait to re-arm until envelope falls below rearm level
+            while envelope >= (TRIGGER_THRESHOLD * 0.4):  # REARM_LEVEL
+                time.sleep(0.001)
+                # In real system, we'd read more data here
+                break  # Simplified for testing
+            
+            armed = True
+
+def serial_reader_thread():
+    """Background thread to read waveform data from Arduino."""
+    global ser, serial_running, sample_count
+    
+    print("Starting waveform reader thread...")
+    
+    while serial_running:
+        if ser and not ser.closed:
+            value = read_one_int(ser)
+            if value is not None:
+                # Process the waveform data
+                process_waveform_data(value)
+                
+                # Store for web display
+                with data_lock:
+                    waveform_data.append(value)
+                    envelope_data.append(envelope)
+                    time_data.append(time.time())
+        else:
+            time.sleep(0.01)
+    
+    print("Waveform reader thread stopped")
+
+def start_serial_thread():
+    """Start the serial reader thread."""
+    global serial_running
+    serial_running = True
+    thread = threading.Thread(target=serial_reader_thread, daemon=True)
+    thread.start()
+    return thread
+
 # Web interface for testing
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'pbt-tester-secret'
@@ -107,8 +220,23 @@ def handle_connect():
         'trigger_threshold': TRIGGER_THRESHOLD,
         'peak_range': f"{A_MIN}-{A_MAX}",
         'pulse_range': f"{W_MIN_MS}-{W_MAX_MS}ms",
-        'mapping': "INVERTED (High peak → Short pulse)"
+        'mapping': "INVERTED (High peak → Short pulse)",
+        'simulation_mode': True,
+        'waveform_enabled': True
     })
+    
+    # Send current waveform data
+    with data_lock:
+        if waveform_data:
+            emit('waveform_data', {
+                'waveform': list(waveform_data),
+                'envelope': list(envelope_data),
+                'time': list(time_data),
+                'baseline': baseline,
+                'envelope_val': envelope,
+                'armed': armed,
+                'peak': peak
+            })
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -277,20 +405,65 @@ def handle_send_arcade_signal(data):
     except (ValueError, KeyError) as e:
         emit('error', {'message': f'Invalid pulse width: {e}'})
 
+@socketio.on('get_waveform_data')
+def handle_get_waveform_data():
+    """Send current waveform data to client."""
+    with data_lock:
+        emit('waveform_data', {
+            'waveform': list(waveform_data),
+            'envelope': list(envelope_data),
+            'time': list(time_data),
+            'baseline': baseline,
+            'envelope_val': envelope,
+            'armed': armed,
+            'peak': peak,
+            'sample_count': sample_count,
+            'pulse_count': pulse_count
+        })
+
+@socketio.on('generate_peak')
+def handle_generate_peak():
+    """Generate a random peak in the Arduino simulator."""
+    if ser and not ser.closed:
+        ser.write(b"GENERATE_PEAK\n")
+        ser.flush()
+        print("Generated random peak in Arduino simulator")
+
+@socketio.on('start_simulation')
+def handle_start_simulation():
+    """Start the Arduino simulation."""
+    if ser and not ser.closed:
+        ser.write(b"START_SIMULATION\n")
+        ser.flush()
+        print("Started Arduino simulation")
+
+@socketio.on('stop_simulation')
+def handle_stop_simulation():
+    """Stop the Arduino simulation."""
+    if ser and not ser.closed:
+        ser.write(b"STOP_SIMULATION\n")
+        ser.flush()
+        print("Stopped Arduino simulation")
+
 if __name__ == '__main__':
     print("=" * 60)
-    print("SICK7 PBT Tester - Sends Real Arcade Signals")
+    print("SICK7 PBT Tester - Real Waveform Simulation")
     print("=" * 60)
     print(f"Trigger: {TRIGGER_THRESHOLD} ADC")
     print(f"Peak Range: {A_MIN}-{A_MAX} ADC")
     print(f"Pulse Range: {W_MIN_MS}-{W_MAX_MS} ms")
     print(f"Web: http://localhost:5002")
+    print(f"Oscilloscope: Pin 3 (PWM), Pin 6 (Arcade), Pin 5 (Arcade)")
     print("=" * 60)
     
     # Try to connect to Arduino
     arduino_connected = init_arduino()
     if not arduino_connected:
         print("WARNING: Arduino not connected - testing without arcade signals")
+    else:
+        # Start the serial reader thread
+        start_serial_thread()
+        print("Waveform reader thread started")
     
     try:
         socketio.run(app, host='0.0.0.0', port=5002, debug=False, allow_unsafe_werkzeug=True)
@@ -299,5 +472,6 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"Error: {e}")
     finally:
+        serial_running = False
         if ser and not ser.closed:
             ser.close()

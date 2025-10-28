@@ -340,6 +340,62 @@
             display: none;
         }
         
+        .waveform-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .waveform-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .waveform-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .waveform-container {
+            background: #000;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        #waveform-canvas {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            border-radius: 3px;
+        }
+        
+        .waveform-legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
         .status-indicator {
             display: inline-block;
             width: 12px;
@@ -446,6 +502,55 @@
                 <div id="simulation-content"></div>
             </div>
             
+            <div id="waveform-display" class="waveform-panel">
+                <h3>Real-time Waveform</h3>
+                <div class="waveform-controls">
+                    <button id="start-sim-btn" class="test-btn">Start Simulation</button>
+                    <button id="stop-sim-btn" class="test-btn">Stop Simulation</button>
+                    <button id="generate-peak-btn" class="test-btn">Generate Peak</button>
+                    <button id="refresh-waveform-btn" class="test-btn">Refresh</button>
+                </div>
+                <div class="waveform-info">
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="simulation-status">Stopped</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Samples:</span>
+                        <span class="info-value" id="sample-count">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Pulses:</span>
+                        <span class="info-value" id="pulse-count">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Armed:</span>
+                        <span class="info-value" id="armed-status">Yes</span>
+                    </div>
+                </div>
+                <div class="waveform-container">
+                    <canvas id="waveform-canvas" width="800" height="300"></canvas>
+                </div>
+                <div class="waveform-legend">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #007bff;"></span>
+                        <span>Raw Waveform</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #ff6b6b;"></span>
+                        <span>Envelope</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #28a745;"></span>
+                        <span>Baseline</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #ffc107;"></span>
+                        <span>Threshold</span>
+                    </div>
+                </div>
+            </div>
+            
             <div id="error" class="error">
                 <h3>❌ Error</h3>
                 <div id="error-content"></div>
@@ -534,6 +639,142 @@
         function sendArcadeSignal() {
             const pulseWidth = parseFloat(document.getElementById('pulse-input').value);
             socket.emit('send_arcade_signal', { pulse_width: pulseWidth });
+        }
+        
+        // Waveform display variables
+        let waveformCanvas, waveformCtx;
+        let waveformData = [];
+        let envelopeData = [];
+        let timeData = [];
+        let baseline = 512;
+        let threshold = 24;
+        
+        // Initialize waveform canvas
+        function initWaveform() {
+            waveformCanvas = document.getElementById('waveform-canvas');
+            waveformCtx = waveformCanvas.getContext('2d');
+            
+            // Set canvas size
+            const rect = waveformCanvas.getBoundingClientRect();
+            waveformCanvas.width = rect.width * window.devicePixelRatio;
+            waveformCanvas.height = rect.height * window.devicePixelRatio;
+            waveformCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            // Draw initial grid
+            drawWaveform();
+        }
+        
+        // Draw waveform on canvas
+        function drawWaveform() {
+            if (!waveformCtx || waveformData.length === 0) return;
+            
+            const canvas = waveformCanvas;
+            const ctx = waveformCtx;
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+            
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw grid
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i <= 10; i++) {
+                const y = (height / 10) * i;
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+            }
+            for (let i = 0; i <= 20; i++) {
+                const x = (width / 20) * i;
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+            }
+            ctx.stroke();
+            
+            // Draw baseline
+            ctx.strokeStyle = '#28a745';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const baselineY = height - (baseline / 1023) * height;
+            ctx.moveTo(0, baselineY);
+            ctx.lineTo(width, baselineY);
+            ctx.stroke();
+            
+            // Draw threshold line
+            ctx.strokeStyle = '#ffc107';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            const thresholdY = height - ((baseline + threshold) / 1023) * height;
+            ctx.moveTo(0, thresholdY);
+            ctx.lineTo(width, thresholdY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw waveform
+            if (waveformData.length > 1) {
+                ctx.strokeStyle = '#007bff';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                
+                const dataLength = Math.min(waveformData.length, 2000); // Show last 2000 samples
+                const startIndex = Math.max(0, waveformData.length - dataLength);
+                const stepX = width / dataLength;
+                
+                for (let i = 0; i < dataLength; i++) {
+                    const x = i * stepX;
+                    const y = height - (waveformData[startIndex + i] / 1023) * height;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+            }
+            
+            // Draw envelope
+            if (envelopeData.length > 1) {
+                ctx.strokeStyle = '#ff6b6b';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                const dataLength = Math.min(envelopeData.length, 2000);
+                const startIndex = Math.max(0, envelopeData.length - dataLength);
+                const stepX = width / dataLength;
+                
+                for (let i = 0; i < dataLength; i++) {
+                    const x = i * stepX;
+                    const y = height - ((baseline + envelopeData[startIndex + i]) / 1023) * height;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+            }
+        }
+        
+        // Update waveform data
+        function updateWaveform(data) {
+            waveformData = data.waveform || [];
+            envelopeData = data.envelope || [];
+            timeData = data.time || [];
+            baseline = data.baseline || 512;
+            threshold = 24; // From config
+            
+            // Update info display
+            document.getElementById('sample-count').textContent = data.sample_count || 0;
+            document.getElementById('pulse-count').textContent = data.pulse_count || 0;
+            document.getElementById('armed-status').textContent = data.armed ? 'Yes' : 'No';
+            
+            // Redraw waveform
+            drawWaveform();
         }
         
         // Result handlers
@@ -736,9 +977,75 @@
             document.getElementById('error').style.display = 'block';
         });
         
+        // Waveform data handler
+        socket.on('waveform_data', (data) => {
+            updateWaveform(data);
+        });
+        
+        // Configuration handler
+        socket.on('config', (data) => {
+            const configGrid = document.getElementById('config-grid');
+            configGrid.innerHTML = `
+                <div class="config-item">
+                    <span class="config-label">Trigger Threshold:</span>
+                    <span class="config-value">${data.trigger_threshold} ADC</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Peak Range:</span>
+                    <span class="config-value">${data.peak_range}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Pulse Range:</span>
+                    <span class="config-value">${data.pulse_range}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Mapping:</span>
+                    <span class="config-value">${data.mapping}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Simulation Mode:</span>
+                    <span class="config-value">${data.simulation_mode ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Waveform Display:</span>
+                    <span class="config-value">${data.waveform_enabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+            `;
+        });
+        
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             console.log('PBT Tester interface initialized');
+            
+            // Initialize waveform display
+            initWaveform();
+            
+            // Add button event listeners
+            document.getElementById('start-sim-btn').addEventListener('click', () => {
+                socket.emit('start_simulation');
+                document.getElementById('simulation-status').textContent = 'Running';
+            });
+            
+            document.getElementById('stop-sim-btn').addEventListener('click', () => {
+                socket.emit('stop_simulation');
+                document.getElementById('simulation-status').textContent = 'Stopped';
+            });
+            
+            document.getElementById('generate-peak-btn').addEventListener('click', () => {
+                socket.emit('generate_peak');
+            });
+            
+            document.getElementById('refresh-waveform-btn').addEventListener('click', () => {
+                socket.emit('get_waveform_data');
+            });
+            
+            // Request initial waveform data
+            socket.emit('get_waveform_data');
+            
+            // Auto-refresh waveform every 100ms
+            setInterval(() => {
+                socket.emit('get_waveform_data');
+            }, 100);
         });
     </script>
 </body>
