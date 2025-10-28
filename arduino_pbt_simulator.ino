@@ -44,6 +44,10 @@ const int PEAK_TYPES = 3;
 const int PEAK_AMPLITUDES[PEAK_TYPES] = {30, 60, 100};  // Low, Medium, High peaks
 const int PEAK_PROBABILITIES[PEAK_TYPES] = {70, 25, 5}; // Probability percentages
 
+// Custom peak input
+int custom_peak_amplitude = 0;
+bool custom_peak_requested = false;
+
 void setup() {
   Serial.begin(115200);
   
@@ -102,8 +106,22 @@ void loop() {
     generatePBTWaveform();
   }
   
-  // Check for peak generation
-  if (simulation_running && nowMs - last_peak_time > peak_interval) {
+  // Check for custom peak request
+  if (custom_peak_requested) {
+    peak_amplitude = custom_peak_amplitude;
+    generate_peak = true;
+    peak_counter = PEAK_DURATION;
+    custom_peak_requested = false;
+    
+    Serial.print("# CUSTOM PEAK GENERATED: Amplitude=");
+    Serial.print(peak_amplitude);
+    Serial.print(" ADC (");
+    Serial.print((peak_amplitude * 5.0) / 1023.0, 2);
+    Serial.println("V)");
+  }
+  
+  // Check for random peak generation (only if no custom peak requested)
+  if (simulation_running && !custom_peak_requested && nowMs - last_peak_time > peak_interval) {
     generateRandomPeak();
     last_peak_time = nowMs;
     peak_interval = random(2000, 8000); // Next peak in 2-8 seconds
@@ -169,6 +187,18 @@ void generateRandomPeak() {
   Serial.print(peak_amplitude);
   Serial.print(" ADC (");
   Serial.print((peak_amplitude * 5.0) / 1023.0, 2);
+  Serial.println("V)");
+}
+
+void generateCustomPeak(int amplitude) {
+  // Generate custom peak with specified amplitude
+  custom_peak_amplitude = constrain(amplitude, 0, 200); // Limit to reasonable range
+  custom_peak_requested = true;
+  
+  Serial.print("# CUSTOM PEAK REQUESTED: Amplitude=");
+  Serial.print(custom_peak_amplitude);
+  Serial.print(" ADC (");
+  Serial.print((custom_peak_amplitude * 5.0) / 1023.0, 2);
   Serial.println("V)");
 }
 
@@ -249,6 +279,14 @@ void processGPIOCommand(String command) {
   }
   else if (command == "GENERATE_PEAK") {
     generateRandomPeak();
+  }
+  else if (command.startsWith("CUSTOM_PEAK:")) {
+    // Parse custom peak command: "CUSTOM_PEAK:45"
+    int colonIndex = command.indexOf(':');
+    if (colonIndex > 0) {
+      int amplitude = command.substring(colonIndex + 1).toInt();
+      generateCustomPeak(amplitude);
+    }
   }
   else if (command == "START_SIMULATION") {
     simulation_running = true;

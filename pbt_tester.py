@@ -429,6 +429,30 @@ def handle_generate_peak():
         ser.flush()
         print("Generated random peak in Arduino simulator")
 
+@socketio.on('generate_custom_peak')
+def handle_generate_custom_peak(data):
+    """Generate a custom peak with specified amplitude."""
+    try:
+        amplitude = int(data['amplitude'])
+        if ser and not ser.closed:
+            command = f"CUSTOM_PEAK:{amplitude}\n"
+            ser.write(command.encode())
+            ser.flush()
+            print(f"Generated custom peak: {amplitude} ADC")
+            emit('custom_peak_result', {
+                'success': True,
+                'amplitude': amplitude,
+                'message': f'Custom peak generated: {amplitude} ADC'
+            })
+        else:
+            emit('custom_peak_result', {
+                'success': False,
+                'amplitude': amplitude,
+                'message': 'Arduino not connected'
+            })
+    except (ValueError, KeyError) as e:
+        emit('error', {'message': f'Invalid amplitude: {e}'})
+
 @socketio.on('start_simulation')
 def handle_start_simulation():
     """Start the Arduino simulation."""

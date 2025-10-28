@@ -355,6 +355,26 @@
             flex-wrap: wrap;
         }
         
+        .custom-peak-controls {
+            background: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .custom-peak-controls h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        
+        .peak-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
         .waveform-info {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -507,8 +527,27 @@
                 <div class="waveform-controls">
                     <button id="start-sim-btn" class="test-btn">Start Simulation</button>
                     <button id="stop-sim-btn" class="test-btn">Stop Simulation</button>
-                    <button id="generate-peak-btn" class="test-btn">Generate Peak</button>
+                    <button id="generate-peak-btn" class="test-btn">Generate Random Peak</button>
                     <button id="refresh-waveform-btn" class="test-btn">Refresh</button>
+                </div>
+                <div class="custom-peak-controls">
+                    <h4>Custom Peak Input</h4>
+                    <div class="input-row">
+                        <label for="custom-peak-input">Peak Amplitude:</label>
+                        <input type="number" id="custom-peak-input" min="0" max="200" value="50" step="1">
+                        <span>ADC</span>
+                        <button id="generate-custom-peak-btn" class="test-btn">Generate Custom Peak</button>
+                    </div>
+                    <div class="peak-info">
+                        <div class="info-item">
+                            <span class="info-label">Range:</span>
+                            <span class="info-value">0-200 ADC (0-5V)</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Recommended:</span>
+                            <span class="info-value">24-100 ADC for testing</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="waveform-info">
                     <div class="info-item">
@@ -982,6 +1021,29 @@
             updateWaveform(data);
         });
         
+        // Custom peak result handler
+        socket.on('custom_peak_result', (data) => {
+            const container = document.getElementById('simulation-content');
+            const color = data.success ? '#28a745' : '#dc3545';
+            
+            container.innerHTML = `
+                <div class="result-item">
+                    <span class="result-label">Custom Peak:</span>
+                    <span class="result-value">${data.amplitude} ADC</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Status:</span>
+                    <span class="result-value" style="color: ${color};">${data.message}</span>
+                </div>
+            `;
+            
+            document.getElementById('simulation-result').style.display = 'block';
+            
+            // Hide other result panels
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('range-results').style.display = 'none';
+        });
+        
         // Configuration handler
         socket.on('config', (data) => {
             const configGrid = document.getElementById('config-grid');
@@ -1037,6 +1099,15 @@
             
             document.getElementById('refresh-waveform-btn').addEventListener('click', () => {
                 socket.emit('get_waveform_data');
+            });
+            
+            document.getElementById('generate-custom-peak-btn').addEventListener('click', () => {
+                const amplitude = parseInt(document.getElementById('custom-peak-input').value);
+                if (amplitude >= 0 && amplitude <= 200) {
+                    socket.emit('generate_custom_peak', { amplitude: amplitude });
+                } else {
+                    alert('Peak amplitude must be between 0 and 200 ADC');
+                }
             });
             
             // Request initial waveform data
