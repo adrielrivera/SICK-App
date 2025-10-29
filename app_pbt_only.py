@@ -40,7 +40,7 @@ cap_end = 0.0
 # GPIO pulse parameters (from pbt_pulse_plot.py)
 CAPTURE_MS = 250
 REFRACTORY_MS = 200
-A_MIN, A_MAX = 30, 100  # Updated range for better scoring
+A_MIN, A_MAX = 24, 60  # Cover your actual peak range (24-60) - adjusted for 60% easier threshold
 W_MIN_MS, W_MAX_MS = 10, 100  # Shorter max pulse for better high scores
 REARM_LEVEL = TRIGGER_THRESHOLD * 0.4
 
@@ -70,17 +70,52 @@ def map_linear_inverse(x, x0, x1, y0, y1):
 
 
 def calculate_pulse_width(peak):
-    """Calculate pulse width from peak value - map 30-100 ADC to 40-10ms."""
+    """Calculate pulse width from peak value - map 24-60 ADC to 100-10ms (INVERTED)."""
     a_clamped = clamp(peak, A_MIN, A_MAX)
     
-    # Map 30-100 ADC to 40-10ms pulse width for better distribution
-    # 30 ADC -> 40ms (good score)
-    # 100 ADC -> 10ms (maximum score)
-    # Linear mapping across the full range
-    
-    width_ms = 40 - (a_clamped - 30) * (30 / 70)  # 30->40ms, 100->10ms
+    # Map amplitude to pulse width INVERSELY
+    # High peak → Short pulse (strong hit = quick button press)
+    # Low peak → Long pulse (weak hit = slow button press)
+    width_ms = map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS)
     
     return clamp(width_ms, W_MIN_MS, W_MAX_MS)
+
+
+def calculate_arcade_score(peak):
+    """Calculate arcade score from peak value."""
+    pulse_width = calculate_pulse_width(peak)
+    return calculate_arcade_score_from_pulse_width(pulse_width)
+
+
+def calculate_arcade_score_from_pulse_width(pulse_width_ms):
+    """Calculate arcade score based on actual pulse width duration."""
+    # Based on your observations with better distribution:
+    # 100ms -> 140 score
+    # 80ms  -> 200 score  
+    # 60ms  -> 280 score
+    # 40ms  -> 380 score
+    # 20ms  -> 450 score
+    # 10ms  -> 500 score
+    
+    if pulse_width_ms >= 100:
+        return 140
+    elif pulse_width_ms >= 80:
+        # Linear interpolation: 100ms->140, 80ms->200
+        return int(140 + (100 - pulse_width_ms) * (60 / 20))
+    elif pulse_width_ms >= 60:
+        # Linear interpolation: 80ms->200, 60ms->280
+        return int(200 + (80 - pulse_width_ms) * (80 / 20))
+    elif pulse_width_ms >= 40:
+        # Linear interpolation: 60ms->280, 40ms->380
+        return int(280 + (60 - pulse_width_ms) * (100 / 20))
+    elif pulse_width_ms >= 20:
+        # Linear interpolation: 40ms->380, 20ms->450
+        return int(380 + (40 - pulse_width_ms) * (70 / 20))
+    elif pulse_width_ms >= 10:
+        # Linear interpolation: 20ms->450, 10ms->500
+        return int(450 + (20 - pulse_width_ms) * (50 / 10))
+    else:
+        return 500  # Very short pulses get max score
 
 
 def arcade_button_press(ser, duration_ms):
@@ -241,11 +276,18 @@ def serial_reader_thread():
             
             # Check if capture window ended or envelope dropped
             if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
-                # Use updated pulse width calculation
-                width_ms = calculate_pulse_width(peak)
+                # Map amplitude to pulse width INVERSELY
+                # High peak → Short pulse (strong hit = quick button press)
+                # Low peak → Long pulse (weak hit = slow button press)
+                a_clamped = clamp(peak, A_MIN, A_MAX)
+                width_ms = clamp(
+                    map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
+                    W_MIN_MS, W_MAX_MS
+                )
                 
                 pulse_count += 1
-                print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.1f}ms")
+                print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
+                print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
                 
                 # Generate arcade button press using Arduino GPIO control
                 arcade_button_press(ser, width_ms)
