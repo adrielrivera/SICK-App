@@ -1,44 +1,33 @@
-(venv) sick7@raspberrypi:~/SICK/SICK-App $ ls
-app_combined.py                pbt_tester.py
-app.py                         __pycache__
-cleanup_arduino_files.sh       requirements.txt
-COMPLETE_SIMULATION_README.md  setup_cloudflare_tunnel.sh
-config_auth.py                 sick-pbt.service
-config_lidar.py                start_arduino_simulator.sh
-config_optimized.py            start_both.sh
-config.py                      start_combined.sh
-config_sick10bar.py            start_lidar.sh
-CUSTOM_PEAK_GUIDE.md           start_optimized.sh
-debug.txt                      start.sh
-deploy_pi.sh                   start_tester.sh
-lidar.log                      static
-lidar_monitor.py               templates
-monitor_performance.sh         test_mode.py
-ngrok-v3-stable-linux-arm.tgz  unified_pbt_lidar.ino
-NO_RANDOM_PEAKS_README.md      UNIFIED_SYSTEM_README.md
-pbt.log                        upload_unified_arduino.sh
-pbt_pulse_plot.py              venv
-(venv) sick7@raspberrypi:~/SICK/SICK-App $ ./cleanup_arduino_files.sh 
+(venv) sick7@raspberrypi:~/SICK/SICK-Capstone/arduino_stuff/lidar_detection $ ./upload.sh 
 ==========================================
-Cleaning up Arduino files
+LiDAR Detection Arduino Upload Script
 ==========================================
-Removing old Arduino files...
-Remaining Arduino files:
--rw-rw-r-- 1 sick7 sick7 8674 Oct 28 05:32 unified_pbt_lidar.ino
-==========================================
-Cleanup complete!
-Only unified_pbt_lidar.ino should remain
-==========================================
-(venv) sick7@raspberrypi:~/SICK/SICK-App $ ./upload_unified_arduino.sh 
-==========================================
-Uploading SICK7 Unified Arduino Code
-==========================================
-Checking for Arduino...
-Found Arduino on: /dev/ttyUSB0
-Compiling unified Arduino code...
-Can't open sketch: main file missing from sketch: /home/sick7/SICK/SICK-App/SICK-App.ino
-ERROR: Compilation failed!
-Make sure there's only one .ino file in the directory
-(venv) sick7@raspberrypi:~/SICK/SICK-App $ ls -la *.ino
--rw-rw-r-- 1 sick7 sick7 8674 Oct 28 05:32 unified_pbt_lidar.ino
-(venv) sick7@raspberrypi:~/SICK/SICK-App $ 
+Found Arduino at: /dev/ttyUSB1
+Compiling and uploading lidar_detection.ino...
+/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino: In function 'void processCommand(String)':
+/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:134:18: error: 'ALARM_LED_PIN' was not declared in this scope
+     digitalWrite(ALARM_LED_PIN, LOW);
+                  ^~~~~~~~~~~~~
+/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:134:18: note: suggested alternative: 'LED_PIN'
+     digitalWrite(ALARM_LED_PIN, LOW);
+                  ^~~~~~~~~~~~~
+                  LED_PIN
+/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:138:18: error: 'TIM240_PIN' was not declared in this scope
+     digitalWrite(TIM240_PIN, HIGH);
+                  ^~~~~~~~~~
+/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:138:18: note: suggested alternative: 'INPUT_PIN'
+     digitalWrite(TIM240_PIN, HIGH);
+                  ^~~~~~~~~~
+                  INPUT_PIN
+/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:142:18: error: 'TIM240_PIN' was not declared in this scope
+     digitalWrite(TIM240_PIN, LOW);
+                  ^~~~~~~~~~
+/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:142:18: note: suggested alternative: 'INPUT_PIN'
+     digitalWrite(TIM240_PIN, LOW);
+                  ^~~~~~~~~~
+                  INPUT_PIN
+
+Used platform Version Path
+arduino:avr   1.8.6   /home/sick7/.arduino15/packages/arduino/hardware/avr/1.8.6
+Error during build: exit status 1
+ERROR: Arduino compilation failed.
