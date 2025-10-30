@@ -53,10 +53,15 @@ pulse_count = 0
 # Safety system
 game_enabled = True
 
-# Multi-LiDAR status tracking
-tim240_alert = False
-tim100_detected = False
-tim150_detected = False
+# LiDAR alarm Arduino (OR gate) serial config
+LIDAR_SERIAL_PORT = "/dev/ttyUSB1"  # Second Arduino
+LIDAR_BAUD = 9600                    # Matches lidar_detection.ino
+lidar_ser = None
+lidar_thread = None
+
+# LiDAR status (simplified OR-gated system)
+lidar_person_detected = False
+lidar_alarm_active = False
 
 
 def clamp(x, lo, hi):
@@ -165,13 +170,7 @@ def read_arduino_messages(ser):
             
             if line and line.startswith("#"):
                 print(f"  Arduino: {line}")
-                
-                # Parse TiM1xx status from Arduino
-                if line.startswith("# LIDAR_STATUS:"):
-                    parts = line.split()
-                    if len(parts) >= 4:
-                        tim100_detected = "DETECTED" in parts[1]
-                        tim150_detected = "DETECTED" in parts[3]
+                # No per-sensor parsing needed here
             elif "TiM100 DETECTED" in line:
                 tim100_detected = True
                 print(f"  Arduino: TiM100 DETECTED - Person on LEFT side")
@@ -190,22 +189,14 @@ def read_arduino_messages(ser):
 
 def get_combined_lidar_status():
     """Get combined status from all LiDARs."""
-    global tim240_alert, tim100_detected, tim150_detected
-    
-    # For now, we'll simulate TiM240 status based on test buttons
-    # In production, this would read from tim240_run.py process
-    
-    if tim240_alert or tim100_detected or tim150_detected:
-        unsafe_areas = []
-        if tim240_alert: unsafe_areas.append("REAR")
-        if tim100_detected: unsafe_areas.append("LEFT")
-        if tim150_detected: unsafe_areas.append("RIGHT")
-        
+    global lidar_person_detected, lidar_alarm_active
+
+    if lidar_person_detected:
         return "DANGER", {
-            'rear': tim240_alert,
-            'left': tim100_detected,
-            'right': tim150_detected,
-            'areas': unsafe_areas
+            'rear': False,
+            'left': False,
+            'right': False,
+            'areas': ["ANY"]
         }
     else:
         return "SAFE", {
@@ -214,6 +205,56 @@ def get_combined_lidar_status():
             'right': False,
             'areas': []
         }
+
+
+def lidar_reader_thread():
+    """Background thread: read LiDAR alarm Arduino on ttyUSB1 and update person_detected."""
+    global lidar_ser, lidar_person_detected, lidar_alarm_active
+    try:
+        lidar_ser = serial.Serial(LIDAR_SERIAL_PORT, LIDAR_BAUD, timeout=1)
+        time.sleep(0.2)
+        lidar_ser.reset_input_buffer()
+        print(f"DEBUG LIDAR: Arduino connected on {LIDAR_SERIAL_PORT} @ {LIDAR_BAUD} baud")
+    except Exception as e:
+        print(f"WARNING: Could not open LiDAR serial {LIDAR_SERIAL_PORT}: {e}")
+        return
+
+    last_emit = 0
+    while serial_running:
+        try:
+            while lidar_ser.in_waiting > 0:
+                line = lidar_ser.readline().decode(errors='ignore').strip()
+                if not line:
+                    continue
+                if line.startswith("LIDAR_STATUS:"):
+                    # Format: LIDAR_STATUS:person,alarm  where 1/0
+                    try:
+                        status = line.split(":",1)[1]
+                        parts = status.split(",")
+                        if len(parts) >= 2:
+                            lidar_person_detected = (parts[0].strip() == "1")
+                            lidar_alarm_active = (parts[1].strip() == "1")
+                    except Exception:
+                        pass
+                elif line.startswith("PERSON_DETECTED"):
+                    lidar_person_detected = True
+                elif line.startswith("#"):
+                    print(f"  LiDAR Arduino: {line}")
+
+            # Periodically emit safety status to clients
+            now = time.time()
+            if now - last_emit > 0.5:
+                status, info = get_combined_lidar_status()
+                socketio.emit('safety_status', {
+                    'status': status,
+                    'game_enabled': (status == 'SAFE'),
+                    'areas': info
+                })
+                last_emit = now
+        except Exception as e:
+            # Keep thread alive on transient serial errors
+            time.sleep(0.1)
+            continue
 
 
 def serial_reader_thread():
@@ -580,6 +621,10 @@ def start_serial_thread():
     serial_running = True
     thread = Thread(target=serial_reader_thread, daemon=True)
     thread.start()
+    # Start LiDAR status reader in parallel
+    global lidar_thread
+    lidar_thread = Thread(target=lidar_reader_thread, daemon=True)
+    lidar_thread.start()
     return thread
 
 
