@@ -101,49 +101,18 @@ function initChart() {
     });
 }
 
-// Safety system functions
-function updateSafetyStatus(status, areas = {}) {
-    safetyStatus = status;
-    const safetyDot = document.getElementById('safety-dot');
-    const safetyText = document.getElementById('safety-text');
-    const safetyMessage = document.getElementById('safety-message');
-    
-    // Update individual LiDAR status
-    updateLidarStatus('rear', areas.rear || false);
-    updateLidarStatus('left', areas.left || false);
-    updateLidarStatus('right', areas.right || false);
-    
-    if (status === 'danger') {
-        safetyDot.className = 'safety-dot danger';
-        safetyText.textContent = 'DANGER - Person Detected';
-        safetyText.className = 'safety-text danger';
-        
-        const areaList = areas.areas ? areas.areas.join(', ') : 'Unknown';
-        safetyMessage.innerHTML = `<p><strong>⚠️ SAFETY ALERT:</strong> Person detected in: ${areaList}. Game is disabled for safety.</p>`;
-        safetyMessage.className = 'safety-message danger';
-        gameEnabled = false;
+// Safety banner updater (single ANY-person state)
+function updateSafetyBanner(enabled) {
+    const banner = document.getElementById('safetyBanner');
+    const text = document.getElementById('safetyText');
+    if (enabled) {
+        banner.classList.remove('danger');
+        banner.classList.add('safe');
+        text.textContent = 'AREA CLEAR';
     } else {
-        safetyDot.className = 'safety-dot';
-        safetyText.textContent = 'SAFE - Game Ready';
-        safetyText.className = 'safety-text safe';
-        safetyMessage.innerHTML = '<p>System is ready for gameplay. Hit the PBT sensor to score points!</p>';
-        safetyMessage.className = 'safety-message';
-        gameEnabled = true;
-    }
-}
-
-function updateLidarStatus(lidar, detected) {
-    const lidarElement = document.querySelector(`.lidar-status.${lidar}`);
-    const statusElement = document.getElementById(`${lidar}-status`);
-    
-    if (lidarElement && statusElement) {
-        if (detected) {
-            lidarElement.classList.add('detected');
-            statusElement.textContent = 'DETECTED';
-        } else {
-            lidarElement.classList.remove('detected');
-            statusElement.textContent = 'CLEAR';
-        }
+        banner.classList.remove('safe');
+        banner.classList.add('danger');
+        text.textContent = 'PERSON DETECTED – SCORING DISABLED';
     }
 }
 
@@ -250,9 +219,8 @@ socket.on('sensor_data', (data) => {
 
 // Safety system WebSocket events
 socket.on('safety_status', (data) => {
-    updateSafetyStatus(data.status, data.areas || {});
-    gameEnabled = data.game_enabled;
-    console.log('Safety status updated:', data);
+    gameEnabled = !!data.game_enabled;
+    updateSafetyBanner(gameEnabled);
 });
 
 // Control buttons
@@ -281,32 +249,6 @@ document.getElementById('clear-btn').addEventListener('click', function() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
-    
-    // Safety system test buttons
-    const testPersonBtn = document.getElementById('test-person-btn');
-    const testTim100Btn = document.getElementById('test-tim100-btn');
-    const testTim150Btn = document.getElementById('test-tim150-btn');
-    const testClearBtn = document.getElementById('test-clear-btn');
-    
-    testPersonBtn.addEventListener('click', function() {
-        socket.emit('test_person_detected');
-        console.log('Test: Rear detected - Game disabled');
-    });
-    
-    testTim100Btn.addEventListener('click', function() {
-        socket.emit('test_tim100_detected');
-        console.log('Test: Left detected - Game disabled');
-    });
-    
-    testTim150Btn.addEventListener('click', function() {
-        socket.emit('test_tim150_detected');
-        console.log('Test: Right detected - Game disabled');
-    });
-    
-    testClearBtn.addEventListener('click', function() {
-        socket.emit('test_area_clear');
-        console.log('Test: All areas clear - Game enabled');
-    });
     
     console.log('PBT Sensor Monitor initialized');
 });

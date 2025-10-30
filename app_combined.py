@@ -374,20 +374,18 @@ def serial_reader_thread():
         safety_status, safety_info = get_combined_lidar_status()
         game_enabled = (safety_status == "SAFE")
         
-        if armed and game_enabled:
-            # Check for trigger (only if game is enabled)
+        # If unsafe, keep system armed but suppress scoring for this loop
+        if not game_enabled:
+            armed = True
+            # Optionally, log once or rate-limit; keep quiet here to avoid spam
+            continue
+
+        if armed:
+            # Check for trigger (only when armed)
             if envelope > TRIGGER_THRESHOLD:
                 armed = False
                 peak = envelope
                 cap_end = now + (CAPTURE_MS / 1000.0)
-        elif not game_enabled and envelope > TRIGGER_THRESHOLD:
-            # Safety violation - person detected, don't process hits
-            areas = safety_info['areas']
-            print(f"\n🚨 SAFETY ALERT: PBT Hit Blocked 🚨")
-            print(f"   Time: {time.strftime('%H:%M:%S')}")
-            print(f"   Reason: Person detected in {', '.join(areas)}")
-            print(f"   Action: Game disabled, scoring blocked")
-            print(f"🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨\n")
         else:
             # Capture peak during capture window
             if envelope > peak:
@@ -449,9 +447,9 @@ def serial_reader_thread():
                     xmag = abs(v2 - baseline)
                     envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
                 
-                # Wait to re-arm until envelope falls below REARM_LEVEL (only if game enabled)
+                # Re-arm as soon as envelope falls below REARM_LEVEL (independent of safety)
                 while True:
-                    if envelope < REARM_LEVEL and game_enabled:
+                    if envelope < REARM_LEVEL:
                         armed = True
                         break
                     v3 = read_one_int(ser)
