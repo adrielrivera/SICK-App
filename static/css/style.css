@@ -254,6 +254,22 @@ header h2 {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+/* Single safety banner (ANY-person) */
+#safetyBanner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin: 16px 0 24px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border: 2px solid transparent;
+}
+#safetyBanner .label { opacity: 0.85; }
+#safetyBanner.safe { background: #e6ffea; color: #0a7a27; border-color: #a6e3b8; }
+#safetyBanner.danger { background: #ffeaea; color: #9d0b0b; border-color: #efb1b1; }
+
 .safety-status {
     margin-bottom: 15px;
 }
