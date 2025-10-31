@@ -374,92 +374,93 @@ def serial_reader_thread():
         safety_status, safety_info = get_combined_lidar_status()
         game_enabled = (safety_status == "SAFE")
         
-        # If unsafe, keep system armed but suppress scoring for this loop
-        if not game_enabled:
-            armed = True
-            # Optionally, log once or rate-limit; keep quiet here to avoid spam
-            continue
-
-        if armed:
-            # Check for trigger (only when armed)
-            if envelope > TRIGGER_THRESHOLD:
-                armed = False
-                peak = envelope
-                cap_end = now + (CAPTURE_MS / 1000.0)
+        # Only process pulse generation if game is enabled
+        # When disabled, keep system armed but continue reading serial data normally
+        if game_enabled:
+            if armed:
+                # Check for trigger (only when armed)
+                if envelope > TRIGGER_THRESHOLD:
+                    armed = False
+                    peak = envelope
+                    cap_end = now + (CAPTURE_MS / 1000.0)
+            else:
+                # Capture peak during capture window
+                if envelope > peak:
+                    peak = envelope
+                
+                # Check if capture window ended or envelope dropped
+                if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
+                    # Map amplitude to pulse width INVERSELY
+                    # High peak → Short pulse (strong hit = quick button press)
+                    # Low peak → Long pulse (weak hit = slow button press)
+                    a_clamped = clamp(peak, A_MIN, A_MAX)
+                    width_ms = clamp(
+                        map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
+                        W_MIN_MS, W_MAX_MS
+                    )
+                    
+                    pulse_count += 1
+                    print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
+                    print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
+                    
+                    # Send PBT hit notification to Arduino for credit tracking
+                    try:
+                        ser.write(b"PBT_HIT\n")
+                        ser.flush()
+                        print("  PBT_HIT sent to Arduino for credit tracking")
+                        
+                        # IMMEDIATELY read Arduino response messages multiple times
+                        for i in range(10):  # Read multiple times to catch all responses
+                            read_arduino_messages(ser)
+                            time.sleep(0.01)  # Small delay between reads
+                            
+                    except Exception as e:
+                        print(f"  Error sending PBT_HIT: {e}")
+                    
+                    # Request credit status from Arduino
+                    try:
+                        ser.write(b"STATUS\n")
+                        ser.flush()
+                        
+                        # Read Arduino response to STATUS command
+                        for i in range(5):
+                            read_arduino_messages(ser)
+                            time.sleep(0.01)
+                            
+                    except Exception as e:
+                        print(f"  Error requesting status: {e}")
+                    
+                    # Generate arcade button press using Arduino GPIO control
+                    arcade_button_press(ser, width_ms)
+                    
+                    # Refractory period
+                    t_ref_end = time.time() + (REFRACTORY_MS / 1000.0)
+                    while time.time() < t_ref_end:
+                        v2 = read_one_int(ser)
+                        if v2 is None:
+                            continue
+                        sample_count += 1
+                        baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v2
+                        xmag = abs(v2 - baseline)
+                        envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
+                    
+                    # Re-arm as soon as envelope falls below REARM_LEVEL
+                    while True:
+                        if envelope < REARM_LEVEL:
+                            armed = True
+                            break
+                        v3 = read_one_int(ser)
+                        if v3 is None:
+                            time.sleep(0.001)
+                            continue
+                        sample_count += 1
+                        baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v3
+                        xmag = abs(v3 - baseline)
+                        envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
         else:
-            # Capture peak during capture window
-            if envelope > peak:
-                peak = envelope
-            
-            # Check if capture window ended or envelope dropped
-            if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
-                # Map amplitude to pulse width INVERSELY
-                # High peak → Short pulse (strong hit = quick button press)
-                # Low peak → Long pulse (weak hit = slow button press)
-                a_clamped = clamp(peak, A_MIN, A_MAX)
-                width_ms = clamp(
-                    map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
-                    W_MIN_MS, W_MAX_MS
-                )
-                
-                pulse_count += 1
-                print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
-                print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
-                
-                # Send PBT hit notification to Arduino for credit tracking
-                try:
-                    ser.write(b"PBT_HIT\n")
-                    ser.flush()
-                    print("  PBT_HIT sent to Arduino for credit tracking")
-                    
-                    # IMMEDIATELY read Arduino response messages multiple times
-                    for i in range(10):  # Read multiple times to catch all responses
-                        read_arduino_messages(ser)
-                        time.sleep(0.01)  # Small delay between reads
-                        
-                except Exception as e:
-                    print(f"  Error sending PBT_HIT: {e}")
-                
-                # Request credit status from Arduino
-                try:
-                    ser.write(b"STATUS\n")
-                    ser.flush()
-                    
-                    # Read Arduino response to STATUS command
-                    for i in range(5):
-                        read_arduino_messages(ser)
-                        time.sleep(0.01)
-                        
-                except Exception as e:
-                    print(f"  Error requesting status: {e}")
-                
-                # Generate arcade button press using Arduino GPIO control
-                arcade_button_press(ser, width_ms)
-                
-                # Refractory period
-                t_ref_end = time.time() + (REFRACTORY_MS / 1000.0)
-                while time.time() < t_ref_end:
-                    v2 = read_one_int(ser)
-                    if v2 is None:
-                        continue
-                    sample_count += 1
-                    baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v2
-                    xmag = abs(v2 - baseline)
-                    envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
-                
-                # Re-arm as soon as envelope falls below REARM_LEVEL (independent of safety)
-                while True:
-                    if envelope < REARM_LEVEL:
-                        armed = True
-                        break
-                    v3 = read_one_int(ser)
-                    if v3 is None:
-                        time.sleep(0.001)
-                        continue
-                    sample_count += 1
-                    baseline = (1 - BASELINE_ALPHA) * baseline + BASELINE_ALPHA * v3
-                    xmag = abs(v3 - baseline)
-                    envelope = (1 - ENVELOPE_ALPHA) * envelope + ENVELOPE_ALPHA * xmag
+            # Game disabled - keep system armed, suppress all pulse generation
+            # Continue reading serial data normally (don't skip the loop)
+            armed = True
         
         # ============================================================
         # EMIT DATA TO WEB CLIENTS
