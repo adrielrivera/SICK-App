@@ -232,22 +232,54 @@ def lidar_reader_thread():
                         status = line.split(":",1)[1]
                         parts = status.split(",")
                         if len(parts) >= 2:
-                            lidar_person_detected = (parts[0].strip() == "1")
+                            new_person_detected = (parts[0].strip() == "1")
                             lidar_alarm_active = (parts[1].strip() == "1")
-                    except Exception:
+                            
+                            # Check for state change and immediately emit
+                            if new_person_detected != lidar_person_detected:
+                                lidar_person_detected = new_person_detected
+                                status_str, info = get_combined_lidar_status()
+                                socketio.emit('safety_status', {
+                                    'status': status_str,
+                                    'game_enabled': (status_str == 'SAFE'),
+                                    'areas': info
+                                })
+                                print(f"🔄 LiDAR state changed: {'DANGER' if lidar_person_detected else 'SAFE'}")
+                            else:
+                                lidar_person_detected = new_person_detected
+                    except Exception as e:
+                        print(f"Error parsing LIDAR_STATUS: {e}")
                         pass
                 elif line.startswith("PERSON_DETECTED"):
-                    lidar_person_detected = True
+                    if not lidar_person_detected:
+                        lidar_person_detected = True
+                        status_str, info = get_combined_lidar_status()
+                        socketio.emit('safety_status', {
+                            'status': status_str,
+                            'game_enabled': (status_str == 'SAFE'),
+                            'areas': info
+                        })
+                elif "Area clear" in line or "✅" in line:
+                    # Clear message from Arduino - force immediate update
+                    if lidar_person_detected:
+                        lidar_person_detected = False
+                        status_str, info = get_combined_lidar_status()
+                        socketio.emit('safety_status', {
+                            'status': status_str,
+                            'game_enabled': (status_str == 'SAFE'),
+                            'areas': info
+                        })
+                        print(f"🔄 LiDAR cleared: SAFE")
                 elif line.startswith("#"):
                     print(f"  LiDAR Arduino: {line}")
 
-            # Periodically emit safety status to clients
+            # Periodically emit safety status to clients (backup, state changes emit immediately)
             now = time.time()
             if now - last_emit > 0.5:
-                status, info = get_combined_lidar_status()
+                status_str, info = get_combined_lidar_status()
                 socketio.emit('safety_status', {
-                    'status': status,
-                    'game_enabled': (status == 'SAFE'),
+                    'status': status_str,
+                    'game_enabled': (status_str == 'SAFE'),
                     'areas': info
                 })
                 last_emit = now
