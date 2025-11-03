@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SICK7 - PBT Sensor Monitor with Credits</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .credit-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .credit-value {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .credit-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .credit-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .credit-input {
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 80px;
+            text-align: center;
+        }
+        .credit-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .credit-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .credit-btn:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        .credit-zero {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SICK7</h1>
+            <h2>PBT Sensor - Live Waveform Monitor with Credit Tracking</h2>
+        </header>
+
+        <!-- Credit Display -->
+        <div id="creditCard" class="credit-card">
+            <div class="credit-label">Credits Remaining</div>
+            <div class="credit-value" id="credits-value">0</div>
+            <div class="credit-label">2 PBT hits = 1 credit deducted</div>
+            <div class="credit-controls">
+                <input type="number" id="set-credits-input" class="credit-input" placeholder="Set" min="0">
+                <button class="credit-btn" onclick="setCredits()">Set Credits</button>
+                <input type="number" id="add-credits-input" class="credit-input" placeholder="Add" min="0">
+                <button class="credit-btn" onclick="addCredits()">Add Credits</button>
+            </div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-label">Baseline</div>
+                <div class="stat-value" id="baseline-value">--</div>
+                <div class="stat-unit">ADC counts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Current Envelope</div>
+                <div class="stat-value" id="envelope-value">--</div>
+                <div class="stat-unit">ADC counts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Threshold</div>
+                <div class="stat-value" id="threshold-value">24</div>
+                <div class="stat-unit">ADC counts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pulse Count</div>
+                <div class="stat-value" id="pulse-count">0</div>
+                <div class="stat-unit">pulses fired</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Connection</div>
+                <div class="stat-value" id="connection-status">
+                    <span class="status-indicator" id="status-dot"></span>
+                    <span id="status-text">Connecting...</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="safetyBanner" class="safety safe">
+            <span class="label">LiDAR Safety System:</span>
+            <span id="safetyText">AREA CLEAR</span>
+            <span id="credit-override-indicator" style="margin-left: 20px; font-size: 0.9em; opacity: 0.8; display: none;">
+                (Disabled - No Credits)
+            </span>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Real-time Waveform</h3>
+                <div class="chart-controls">
+                    <button id="pause-btn" class="control-btn">Pause</button>
+                    <button id="clear-btn" class="control-btn">Clear</button>
+                </div>
+            </div>
+            <canvas id="waveformChart"></canvas>
+        </div>
+
+        <div class="info-panel">
+            <h3>System Information</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Sample Rate:</span>
+                    <span class="info-value">800 Hz</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Samples Received:</span>
+                    <span class="info-value" id="sample-count">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Buffer Size:</span>
+                    <span class="info-value" id="buffer-size">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Update Rate:</span>
+                    <span class="info-value">20 Hz</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Include main.js functionality first
+        // Credit-specific JavaScript will be added here
+        let currentCredits = 0;
+
+        // Credit management functions
+        function setCredits() {
+            const input = document.getElementById('set-credits-input');
+            const value = parseInt(input.value);
+            if (!isNaN(value) && value >= 0) {
+                socket.emit('set_credits', { credits: value });
+                input.value = '';
+            }
+        }
+
+        function addCredits() {
+            const input = document.getElementById('add-credits-input');
+            const value = parseInt(input.value);
+            if (!isNaN(value) && value > 0) {
+                socket.emit('add_credits', { credits: value });
+                input.value = '';
+            }
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('set-credits-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') setCredits();
+        });
+        document.getElementById('add-credits-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addCredits();
+        });
+
+        // Credit status update handler
+        socket.on('credit_status', (data) => {
+            currentCredits = data.credits || 0;
+            const creditValueEl = document.getElementById('credits-value');
+            const creditCardEl = document.getElementById('creditCard');
+            
+            creditValueEl.textContent = currentCredits;
+            
+            // Visual feedback for credit changes
+            if (data.changed) {
+                creditValueEl.style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                    creditValueEl.style.transform = 'scale(1)';
+                }, 200);
+            }
+            
+            // Change color when credits are zero
+            if (currentCredits === 0) {
+                creditCardEl.classList.add('credit-zero');
+            } else {
+                creditCardEl.classList.remove('credit-zero');
+            }
+        });
+
+        // Update safety banner to show credit override
+        const originalUpdateSafetyBanner = typeof updateSafetyBanner !== 'undefined' ? updateSafetyBanner : null;
+        function updateSafetyBannerWithCredits(enabled) {
+            if (originalUpdateSafetyBanner) {
+                originalUpdateSafetyBanner(enabled);
+            }
+            
+            const overrideIndicator = document.getElementById('credit-override-indicator');
+            if (currentCredits === 0) {
+                overrideIndicator.style.display = 'inline';
+            } else {
+                overrideIndicator.style.display = 'none';
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Override safety banner update after main.js loads
+        if (typeof updateSafetyBanner !== 'undefined') {
+            const originalUpdate = updateSafetyBanner;
+            updateSafetyBanner = function(enabled) {
+                originalUpdate(enabled);
+                const overrideIndicator = document.getElementById('credit-override-indicator');
+                if (currentCredits === 0) {
+                    overrideIndicator.style.display = 'inline';
+                } else {
+                    overrideIndicator.style.display = 'none';
+                }
+            };
+        }
+    </script>
+</body>
+</html>
+
