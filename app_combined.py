@@ -47,6 +47,10 @@ A_MIN, A_MAX = 30, 100  # Improved proportional range (30-100) for better scorin
 W_MIN_MS, W_MAX_MS = 10, 100  # Shorter max pulse for better high scores
 REARM_LEVEL = TRIGGER_THRESHOLD * 0.4
 
+# Grounding issue filtering
+MIN_VALID_READING = 10  # Reject readings below this (grounding issues cause near-0 readings)
+MIN_PEAK_THRESHOLD = 25  # Minimum peak to accept (higher than TRIGGER_THRESHOLD to filter noise)
+
 # Statistics for pulse generation
 pulse_count = 0
 
@@ -393,6 +397,11 @@ def serial_reader_thread():
             time.sleep(0.001)
             continue
         
+        # Filter out grounding issues: reject readings that are too low (sudden drop to 0)
+        if v < MIN_VALID_READING:
+            # Skip this reading - likely a grounding issue causing false spike in envelope
+            continue
+        
         sample_count += 1
         current_time = time.time() - start_time
         
@@ -435,6 +444,12 @@ def serial_reader_thread():
                 
                 # Check if capture window ended or envelope dropped
                 if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
+                    # Validate peak before processing - reject if too low (likely grounding issue)
+                    if peak < MIN_PEAK_THRESHOLD:
+                        print(f"⚠️  Rejected false hit: Peak={peak:.1f} below minimum threshold {MIN_PEAK_THRESHOLD}")
+                        armed = True  # Re-arm immediately
+                        continue
+                    
                     # Map amplitude to pulse width (same calculation as pbt_tester.py)
                     # High peak → Short pulse (strong hit = quick button press)
                     # Low peak → Long pulse (weak hit = slow button press)
