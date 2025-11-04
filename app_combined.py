@@ -85,6 +85,19 @@ def map_linear_inverse(x, x0, x1, y0, y1):
     return y1 - t * (y1 - y0)  # Inverted: subtract instead of add
 
 
+def calculate_pulse_width(peak):
+    """Calculate pulse width from peak value - map 30-100 ADC to 40-10ms (same as pbt_tester.py)."""
+    a_clamped = clamp(peak, A_MIN, A_MAX)
+    
+    # Map 30-100 ADC to 40-10ms pulse width for better distribution
+    # 30 ADC -> 40ms (good score)
+    # 100 ADC -> 10ms (maximum score)
+    # Linear mapping across the full range (same as pbt_tester.py)
+    width_ms = 40 - (a_clamped - 30) * (30 / 70)  # 30->40ms, 100->10ms
+    
+    return clamp(width_ms, W_MIN_MS, W_MAX_MS)
+
+
 def arcade_button_press(ser, duration_ms):
     """
     Arcade button press protocol using Arduino GPIO control.
@@ -422,17 +435,13 @@ def serial_reader_thread():
                 
                 # Check if capture window ended or envelope dropped
                 if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
-                    # Map amplitude to pulse width INVERSELY
+                    # Map amplitude to pulse width (same calculation as pbt_tester.py)
                     # High peak → Short pulse (strong hit = quick button press)
                     # Low peak → Long pulse (weak hit = slow button press)
-                    a_clamped = clamp(peak, A_MIN, A_MAX)
-                    width_ms = clamp(
-                        map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
-                        W_MIN_MS, W_MAX_MS
-                    )
+                    width_ms = calculate_pulse_width(peak)
                     
                     pulse_count += 1
-                    print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
+                    print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms")
                     print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
                     
                     # Send PBT hit notification to Arduino for credit tracking
