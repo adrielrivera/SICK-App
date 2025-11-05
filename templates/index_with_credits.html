@@ -176,6 +176,58 @@
             }
         });
 
+        // Register credit handler immediately after socket is defined (from main.js)
+        // Use a small delay to ensure socket is initialized
+        function registerCreditHandler() {
+            if (typeof socket === 'undefined') {
+                console.warn('⚠️ Socket not ready yet, retrying in 50ms...');
+                setTimeout(registerCreditHandler, 50);
+                return;
+            }
+
+            console.log('✅ Socket defined, registering credit_status handler');
+            
+            // Credit status update handler - register immediately
+            socket.on('credit_status', (data) => {
+                console.log('💰 Received credit_status:', data);
+                currentCredits = data.credits || 0;
+                const creditValueEl = document.getElementById('credits-value');
+                const creditCardEl = document.getElementById('creditCard');
+                
+                if (creditValueEl) {
+                    creditValueEl.textContent = currentCredits;
+                    console.log('✅ Updated credits display to:', currentCredits);
+                } else {
+                    console.error('❌ credits-value element not found!');
+                }
+                
+                if (!creditCardEl) {
+                    console.error('❌ creditCard element not found!');
+                } else {
+                    console.log('✅ Credit card element found and visible');
+                }
+                
+                // Visual feedback for credit changes
+                if (data.changed && creditValueEl) {
+                    creditValueEl.style.transform = 'scale(1.2)';
+                    setTimeout(() => {
+                        creditValueEl.style.transform = 'scale(1)';
+                    }, 200);
+                }
+                
+                // Change color when credits are zero
+                if (creditCardEl) {
+                    if (currentCredits === 0) {
+                        creditCardEl.classList.add('credit-zero');
+                    } else {
+                        creditCardEl.classList.remove('credit-zero');
+                    }
+                }
+            });
+            
+            console.log('✅ credit_status handler registered');
+        }
+
         // Wait for socket to be defined (from main.js)
         function initCreditSystem() {
             if (typeof socket === 'undefined') {
@@ -221,44 +273,6 @@
                 });
             }
 
-            // Credit status update handler
-            socket.on('credit_status', (data) => {
-                console.log('💰 Received credit_status:', data);
-                currentCredits = data.credits || 0;
-                const creditValueEl = document.getElementById('credits-value');
-                const creditCardEl = document.getElementById('creditCard');
-                
-                if (creditValueEl) {
-                    creditValueEl.textContent = currentCredits;
-                    console.log('✅ Updated credits display to:', currentCredits);
-                } else {
-                    console.error('❌ credits-value element not found!');
-                }
-                
-                if (!creditCardEl) {
-                    console.error('❌ creditCard element not found!');
-                } else {
-                    console.log('✅ Credit card element found and visible');
-                }
-                
-                // Visual feedback for credit changes
-                if (data.changed && creditValueEl) {
-                    creditValueEl.style.transform = 'scale(1.2)';
-                    setTimeout(() => {
-                        creditValueEl.style.transform = 'scale(1)';
-                    }, 200);
-                }
-                
-                // Change color when credits are zero
-                if (creditCardEl) {
-                    if (currentCredits === 0) {
-                        creditCardEl.classList.add('credit-zero');
-                    } else {
-                        creditCardEl.classList.remove('credit-zero');
-                    }
-                }
-            });
-
             // Override safety banner update after main.js loads
             if (typeof updateSafetyBanner !== 'undefined') {
                 const originalUpdate = updateSafetyBanner;
@@ -276,7 +290,10 @@
             }
         }
 
-        // Initialize when DOM is ready
+        // Register credit handler immediately (before connect)
+        registerCreditHandler();
+
+        // Initialize credit system when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initCreditSystem);
         } else {
