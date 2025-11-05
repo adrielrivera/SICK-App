@@ -86,6 +86,8 @@ tim240_alert = False
 # Credit tracking system (shared between threads)
 credits_lock = Lock()
 credits = 0  # Current credit count (tracked from Arduino)
+last_credit_deduction_time = 0  # Timestamp of last deduction (to ignore stale Arduino updates)
+CREDIT_UPDATE_COOLDOWN = 0.5  # Ignore Arduino credit updates for 0.5s after deduction
 
 # PBT hit counting (done on Pi, not Arduino)
 pbt_hit_count = 0  # Count PBT hits (2 hits = 1 credit deducted)
@@ -274,18 +276,73 @@ def lidar_reader_thread():
                 if stripped_line.startswith("CREDITS:"):
                     print(f"🔍 ENTERING CREDITS parsing block for line: '{line}' (stripped: '{stripped_line}')")
                     try:
+                        global last_credit_deduction_time
+                        current_time = time.time()
+                        
                         print(f"   Step 1: Splitting line...")
                         credit_str = stripped_line.split(":", 1)[1].strip()
                         print(f"   Step 2: Parsing int from '{credit_str}'...")
                         new_credits = int(credit_str)
-                        print(f"   Step 3: Got new_credits={new_credits}, acquiring lock...")
-                        with credits_lock:
-                            old_credits = credits
-                            credits = max(0, new_credits)
-                        print(f"   Step 4: Lock released, credits={credits}, old_credits={old_credits}")
-                        changed = (old_credits != credits)
+                        print(f"   Step 3: Got new_credits={new_credits}, checking cooldown...")
+                        
+                        # Check if we're in cooldown period after a deduction
+                        time_since_deduction = current_time - last_credit_deduction_time
+                        in_cooldown = (time_since_deduction < CREDIT_UPDATE_COOLDOWN) and (last_credit_deduction_time > 0)
+                        
+                        if in_cooldown:
+                            print(f"   ⏸️  In cooldown ({time_since_deduction:.2f}s < {CREDIT_UPDATE_COOLDOWN}s) - ignoring Arduino update")
+                            print(f"   Arduino says: {new_credits}, but we have: {credits} (deduction in progress)")
+                            # Only accept if Arduino value matches our optimistic deduction
+                            with credits_lock:
+                                expected_credits = credits
+                                if new_credits == expected_credits:
+                                    print(f"   ✅ Arduino confirmed our deduction: {new_credits}")
+                                    # Confirmed - clear cooldown
+                                    last_credit_deduction_time = 0
+                                elif new_credits > expected_credits:
+                                    print(f"   ⚠️  Arduino has MORE credits ({new_credits}) than expected ({expected_credits})")
+                                    print(f"   Possible: Credit add signal received, or Arduino out of sync")
+                                    # Accept the higher value (might be legitimate add)
+                                    old_credits = credits
+                                    credits = new_credits
+                                    last_credit_deduction_time = 0
+                                else:
+                                    print(f"   ⚠️  Arduino has LESS credits ({new_credits}) than expected ({expected_credits})")
+                                    print(f"   Ignoring - might be stale update")
+                                    # Don't update, keep our optimistic value
+                                    new_credits = credits  # Use our value for emit
+                        else:
+                            print(f"   Step 4: Not in cooldown, updating normally...")
+                            with credits_lock:
+                                old_credits = credits
+                                credits = max(0, new_credits)
+                        # Calculate if credits changed (need to track old_credits properly)
+                        old_credits_for_emit = credits  # Will be updated if we change credits
+                        if in_cooldown:
+                            # During cooldown, track old value before potential update
+                            with credits_lock:
+                                old_credits_for_emit = credits
+                            # Then check if we updated
+                            if new_credits == credits:
+                                # Confirmed match - no change to emit
+                                changed = False
+                            elif new_credits > credits:
+                                # Accepted higher value - changed
+                                changed = True
+                                old_credits_for_emit = credits  # Before update
+                            else:
+                                # Ignored - no change
+                                changed = False
+                        else:
+                            # Normal update - use tracked old_credits
+                            changed = old_credits != credits
+                        
+                        print(f"   Step 6: changed={changed}, credits={credits}, old_credits={old_credits if not in_cooldown else old_credits_for_emit}")
                         if changed:
-                            print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
+                            print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits_for_emit if in_cooldown else old_credits})")
+                            if credits > (old_credits_for_emit if in_cooldown else old_credits) and not in_cooldown:
+                                print(f"⚠️  WARNING: Credits INCREASED from Arduino! This shouldn't happen during deduction.")
+                                print(f"   Possible causes: Arduino received credit add signal, or status update conflict")
                         else:
                             print(f"💰 Credits status received (unchanged): {credits}")
                         # Emit credit update to web clients (always emit, even if unchanged, to sync UI)
@@ -522,21 +579,48 @@ def serial_reader_thread():
                     # This is credit-specific logic, doesn't affect core PBT/LiDAR logic
                     global pbt_hit_count
                     pbt_hit_count += 1
+                    print(f"🎯 PBT Hit #{pulse_count}: hit_count={pbt_hit_count}/{HITS_PER_CREDIT}")
                     
                     # When 2 hits reached, deduct 1 credit from LiDAR Arduino
                     if pbt_hit_count >= HITS_PER_CREDIT:
                         pbt_hit_count = 0  # Reset counter
                         
                         # Check if credits available before deducting
+                        global last_credit_deduction_time
                         with credits_lock:
+                            current_credits_before = credits
                             if credits > 0:
+                                # Optimistically update local credits (Arduino will confirm)
+                                credits = max(0, credits - 1)
+                                last_credit_deduction_time = time.time()
+                                print(f"💸 Deducting credit: {current_credits_before} → {credits} (optimistic)")
+                                print(f"   Set cooldown until: {last_credit_deduction_time + CREDIT_UPDATE_COOLDOWN:.2f}s")
+                                
+                                # Emit update immediately so UI shows deduction right away
+                                socketio.emit('credit_status', {
+                                    'credits': credits,
+                                    'changed': True
+                                })
+                                print(f"📤 Emitted credit deduction immediately: {credits}")
+                                
                                 # Send DEDUCT_CREDIT command to LiDAR Arduino
                                 try:
                                     if lidar_ser and not lidar_ser.closed:
                                         lidar_ser.write(b"DEDUCT_CREDIT\n")
                                         lidar_ser.flush()
+                                        print(f"📤 Sent DEDUCT_CREDIT command to Arduino")
                                 except Exception as e:
-                                    print(f"  Error sending DEDUCT_CREDIT: {e}")
+                                    print(f"❌ Error sending DEDUCT_CREDIT: {e}")
+                                    # Rollback on error
+                                    credits = current_credits_before
+                                    last_credit_deduction_time = 0
+                                    # Emit rollback
+                                    socketio.emit('credit_status', {
+                                        'credits': credits,
+                                        'changed': True
+                                    })
+                            else:
+                                print(f"⚠️  Cannot deduct credit: credits already at 0")
                     
                     # Generate arcade button press using Arduino GPIO control
                     arcade_button_press(ser, width_ms)
