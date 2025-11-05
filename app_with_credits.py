@@ -705,7 +705,7 @@ def handle_test_clear():
 @socketio.on('set_credits')
 def handle_set_credits(data):
     """Admin: Set credits directly."""
-    global credits, ser, pbt_hit_count
+    global credits, ser, pbt_hit_count, lidar_ser
     try:
         new_credits = int(data.get('credits', 0))
         if new_credits < 0:
@@ -718,39 +718,58 @@ def handle_set_credits(data):
         # Reset hit counter when credits are manually set
         pbt_hit_count = 0
         
-        # Emit update to web clients immediately
+        print(f"💰 Credits set to: {credits}")
+        
+        # Emit update to web clients immediately (use emit() for sender, socketio.emit() for all)
+        emit('credit_status', {
+            'credits': credits,
+            'changed': True
+        })
         socketio.emit('credit_status', {
             'credits': credits,
             'changed': True
         }, broadcast=True, namespace='/')
-        print(f"💰 Credits set to: {credits}")
         
         # Send command to LiDAR Arduino for synchronization
         if lidar_ser and not lidar_ser.closed:
             cmd = f"SET_CREDITS:{new_credits}\n".encode()
             lidar_ser.write(cmd)
             lidar_ser.flush()
+            print(f"📤 Sent SET_CREDITS:{new_credits} to Arduino")
             # LiDAR Arduino will send back CREDITS: message, which will be read by lidar_reader_thread
             time.sleep(0.05)  # Small delay for Arduino to process
+        else:
+            print(f"⚠️  LiDAR serial not available, credits set locally only")
     except (ValueError, TypeError) as e:
-        print(f"Error setting credits: {e}")
+        print(f"❌ Error setting credits: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 @socketio.on('add_credits')
 def handle_add_credits(data):
     """Admin: Add credits."""
-    global credits, ser, pbt_hit_count
+    global credits, ser, pbt_hit_count, lidar_ser
     try:
         add_amount = int(data.get('credits', 0))
-        if add_amount < 0:
-            add_amount = 0
+        if add_amount <= 0:
+            print(f"⚠️  Invalid add_amount: {add_amount}")
+            return
         
         # Reset hit counter when credits are manually added
         pbt_hit_count = 0
         
+        # Get current credits for optimistic update
+        with credits_lock:
+            current_credits = credits
+            new_credits = current_credits + add_amount
+        
+        print(f"💰 Adding {add_amount} credits (current: {current_credits}, new: {new_credits})")
+        
         # Trigger hardware signal for each credit to add (falling edge: 3.3V → 0V)
         if GPIO_AVAILABLE:
-            for _ in range(add_amount):
+            print(f"📤 Sending {add_amount} credit add pulses via GPIO {CREDIT_GPIO_PIN}")
+            for i in range(add_amount):
                 # Ensure we start HIGH (idle state) and hold for stability
                 GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
                 time.sleep(0.02)  # 20ms HIGH (stable before falling edge)
@@ -760,26 +779,47 @@ def handle_add_credits(data):
                 # Return to HIGH (idle state)
                 GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
                 time.sleep(0.1)  # 100ms delay between pulses (total 140ms per credit, well above 500ms debounce)
-            print(f"💰 Sent {add_amount} credit add pulses via GPIO {CREDIT_GPIO_PIN}")
+                if (i + 1) % 5 == 0:
+                    print(f"   Sent {i + 1}/{add_amount} pulses...")
+            print(f"✅ Sent all {add_amount} credit add pulses")
         else:
             # Fallback: use serial command if GPIO not available
+            print(f"📤 Using serial command (GPIO not available)")
             if lidar_ser and not lidar_ser.closed:
                 cmd = f"ADD_CREDITS:{add_amount}\n".encode()
                 lidar_ser.write(cmd)
                 lidar_ser.flush()
+                print(f"📤 Sent ADD_CREDITS:{add_amount} to Arduino")
                 time.sleep(0.05)
                 # Credit response will be read by lidar_reader_thread
+            else:
+                print(f"⚠️  LiDAR serial not available, using optimistic update only")
+                # Optimistic update if no serial
+                with credits_lock:
+                    credits = new_credits
+        
+        # Optimistic update: emit immediately (Arduino will send correct value later)
+        emit('credit_status', {
+            'credits': new_credits,
+            'changed': True
+        })
+        socketio.emit('credit_status', {
+            'credits': new_credits,
+            'changed': True
+        }, broadcast=True, namespace='/')
+        print(f"📤 Emitted optimistic credit update: {new_credits}")
         
         # Wait for LiDAR Arduino to process and send back CREDITS: message
-        time.sleep(0.1)  # Give Arduino time to process interrupts
-        # Credit response will be read by lidar_reader_thread
-        
-        # Update credits from Arduino response (or optimistic update if no response)
-        # Credits will be updated when Arduino sends CREDITS: message
+        # The actual credit value will be updated when Arduino sends CREDITS: message
+        time.sleep(0.2)  # Give Arduino time to process interrupts
     except (ValueError, TypeError) as e:
-        print(f"Error adding credits: {e}")
+        print(f"❌ Error adding credits: {e}")
+        import traceback
+        traceback.print_exc()
     except Exception as e:
-        print(f"Error triggering GPIO credit signal: {e}")
+        print(f"❌ Error triggering GPIO credit signal: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 @socketio.on('request_credits')
