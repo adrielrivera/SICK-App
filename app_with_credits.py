@@ -289,7 +289,8 @@ def lidar_reader_thread():
                         print(f"Error parsing LIDAR_STATUS: {e}")
                         pass
                 # Parse credit status updates from LiDAR Arduino (credit-specific addition)
-                elif line.startswith("CREDITS:"):
+                # Handle both "CREDITS:" (plural) and "CREDIT:" (singular) formats
+                elif line.startswith("CREDITS:") or line.startswith("CREDIT:"):
                     try:
                         credit_str = line.split(":", 1)[1].strip()
                         new_credits = int(credit_str)
