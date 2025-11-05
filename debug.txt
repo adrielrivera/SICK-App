@@ -1,58 +1,71 @@
-📥 [RAW] LiDAR Arduino line: 'CREDITS:8'
+📥 [RAW] LiDAR Arduino line: 'CREDITS:5'
    Line length: 9, Starts with CREDITS: True
-   First 10 chars: 'CREDITS:8'
-   repr: 'CREDITS:8'
-🔍 ENTERING CREDITS parsing block for line: 'CREDITS:8' (stripped: 'CREDITS:8')
+   First 10 chars: 'CREDITS:5'
+   repr: 'CREDITS:5'
+🔍 ENTERING CREDITS parsing block for line: 'CREDITS:5' (stripped: 'CREDITS:5')
    Step 1: Splitting line...
-   Step 2: Parsing int from '8'...
-   Step 3: Got new_credits=8, checking cooldown...
+   Step 2: Parsing int from '5'...
+   Step 3: Got new_credits=5, checking cooldown...
    Step 4: Not in cooldown, updating normally...
-   Step 6: changed=True, credits=8, old_credits=7
-💰 Credits updated (from LiDAR Arduino): 8 (was 7)
+   Step 6: changed=True, credits=5, old_credits=4
+💰 Credits updated (from LiDAR Arduino): 5 (was 4)
 ⚠️  WARNING: Credits INCREASED from Arduino! This shouldn't happen during deduction.
    Possible causes: Arduino received credit add signal, or status update conflict
    Step 5: Emitting to socketio...
-📤 Emitted credit_status to clients: credits=8, changed=True
+📤 Emitted credit_status to clients: credits=5, changed=True
 📥 [RAW] LiDAR Arduino line: '# Credit added via hardware signal (Pin 2 falling edge)'
    Line length: 55, Starts with CREDITS: False
    First 10 chars: '# Credit a'
    repr: '# Credit added via hardware signal (Pin 2 falling edge)'
   LiDAR Arduino: # Credit added via hardware signal (Pin 2 falling edge)
-Pulse #1: Peak=55.2 → 29 ms
-  Mapping: Peak 55.2 → Pulse 29ms (Range: 30-100 → 10-100ms)
+Pulse #1: Peak=58.4 → 28 ms
+  Mapping: Peak 58.4 → Pulse 28ms (Range: 30-100 → 10-100ms)
 🎯 PBT Hit #1: hit_count=1/2
-📥 [RAW] LiDAR Arduino line: 'CREDITS:9'
+
+📥 [RAW] LiDAR Arduino line: 'CREDITS:6'
    Line length: 9, Starts with CREDITS: True
-   First 10 chars: 'CREDITS:9'
-   repr: 'CREDITS:9'
-🔍 ENTERING CREDITS parsing block for line: 'CREDITS:9' (stripped: 'CREDITS:9')
+   First 10 chars: 'CREDITS:6'
+   repr: 'CREDITS:6'
+🔍 ENTERING CREDITS parsing block for line: 'CREDITS:6' (stripped: 'CREDITS:6')
    Step 1: Splitting line...
-   Step 2: Parsing int from '9'...
-   Step 3: Got new_credits=9, checking cooldown...
+   Step 2: Parsing int from '6'...
+   Step 3: Got new_credits=6, checking cooldown...
    Step 4: Not in cooldown, updating normally...
-   Step 6: changed=True, credits=9, old_credits=8
-💰 Credits updated (from LiDAR Arduino): 9 (was 8)
+   Step 6: changed=True, credits=6, old_credits=5
+💰 Credits updated (from LiDAR Arduino): 6 (was 5)
 ⚠️  WARNING: Credits INCREASED from Arduino! This shouldn't happen during deduction.
    Possible causes: Arduino received credit add signal, or status update conflict
    Step 5: Emitting to socketio...
-📤 Emitted credit_status to clients: credits=9, changed=True
+📤 Emitted credit_status to clients: credits=6, changed=True
 📥 [RAW] LiDAR Arduino line: '# Credit added via hardware signal (Pin 2 falling edge)'
    Line length: 55, Starts with CREDITS: False
    First 10 chars: '# Credit a'
    repr: '# Credit added via hardware signal (Pin 2 falling edge)'
   LiDAR Arduino: # Credit added via hardware signal (Pin 2 falling edge)
-Pulse #2: Peak=59.7 → 27 ms
-  Mapping: Peak 59.7 → Pulse 27ms (Range: 30-100 → 10-100ms)
+Pulse #2: Peak=61.9 → 26 ms
+  Mapping: Peak 61.9 → Pulse 26ms (Range: 30-100 → 10-100ms)
 🎯 PBT Hit #2: hit_count=2/2
-Exception in thread Thread-1 (serial_reader_thread):
-Traceback (most recent call last):
-  File "/usr/lib/python3.13/threading.py", line 1043, in _bootstrap_inner
-    self.run()
-    ~~~~~~~~^^
-  File "/usr/lib/python3.13/threading.py", line 994, in run
-    self._target(*self._args, **self._kwargs)
-    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/sick7/SICK/SICK-App/app_with_credits.py", line 591, in serial_reader_thread
-    current_credits_before = credits
-                             ^^^^^^^
-UnboundLocalError: cannot access local variable 'credits' where it is not associated with a value
+💸 Deducting credit: 6 → 5 (optimistic)
+   Set cooldown until: 1762336273.58s
+📤 Emitted credit deduction immediately: 5
+📤 Sent DEDUCT_CREDIT command to Arduino
+📥 [RAW] LiDAR Arduino line: '# Credit deducted! Credits remaining: 5'
+   Line length: 39, Starts with CREDITS: False
+   First 10 chars: '# Credit d'
+   repr: '# Credit deducted! Credits remaining: 5'
+  LiDAR Arduino: # Credit deducted! Credits remaining: 5
+📥 [RAW] LiDAR Arduino line: 'CREDITS:5'
+   Line length: 9, Starts with CREDITS: True
+   First 10 chars: 'CREDITS:5'
+   repr: 'CREDITS:5'
+🔍 ENTERING CREDITS parsing block for line: 'CREDITS:5' (stripped: 'CREDITS:5')
+   Step 1: Splitting line...
+   Step 2: Parsing int from '5'...
+Step 3: Got new_credits=5, checking cooldown...
+   ⏸️  In cooldown (0.07s < 0.5s) - ignoring Arduino update
+   Arduino says: 5, but we have: 5 (deduction in progress)
+   ✅ Arduino confirmed our deduction: 5
+   Step 6: changed=False, credits=5, old_credits=5
+💰 Credits status received (unchanged): 5
+   Step 5: Emitting to socketio...
+📤 Emitted credit_status to clients: credits=5, changed=False
