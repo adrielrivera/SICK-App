@@ -264,7 +264,31 @@ def lidar_reader_thread():
                 # Debug: Log all lines from LiDAR Arduino (can be commented out later)
                 if line.startswith("CREDITS:") or "credit" in line.lower():
                     print(f"📥 [RAW] LiDAR Arduino line: '{line}'")
-                if line.startswith("LIDAR_STATUS:"):
+                
+                # Parse credit status updates from LiDAR Arduino (credit-specific addition) - CHECK FIRST
+                if line.startswith("CREDITS:"):
+                    try:
+                        credit_str = line.split(":", 1)[1].strip()
+                        new_credits = int(credit_str)
+                        with credits_lock:
+                            old_credits = credits
+                            credits = max(0, new_credits)
+                        changed = (old_credits != credits)
+                        if changed:
+                            print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
+                        else:
+                            print(f"💰 Credits status received (unchanged): {credits}")
+                        # Emit credit update to web clients (always emit, even if unchanged, to sync UI)
+                        # Match the exact emit style used by safety_status (which works)
+                        socketio.emit('credit_status', {
+                            'credits': credits,
+                            'changed': changed
+                        })
+                        print(f"📤 Emitted credit_status to clients: credits={credits}, changed={changed}")
+                    except (ValueError, IndexError) as e:
+                        print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
+                        print(f"   Line was: '{line}'")
+                elif line.startswith("LIDAR_STATUS:"):
                     # Format: LIDAR_STATUS:person,alarm  where 1/0
                     try:
                         status = line.split(":",1)[1]
@@ -288,30 +312,6 @@ def lidar_reader_thread():
                     except Exception as e:
                         print(f"Error parsing LIDAR_STATUS: {e}")
                         pass
-                # Parse credit status updates from LiDAR Arduino (credit-specific addition)
-                # Handle both "CREDITS:" (plural) and "CREDIT:" (singular) formats
-                elif line.startswith("CREDITS:") or line.startswith("CREDIT:"):
-                    try:
-                        credit_str = line.split(":", 1)[1].strip()
-                        new_credits = int(credit_str)
-                        with credits_lock:
-                            old_credits = credits
-                            credits = max(0, new_credits)
-                        changed = (old_credits != credits)
-                        if changed:
-                            print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
-                        else:
-                            print(f"💰 Credits status received (unchanged): {credits}")
-                        # Emit credit update to web clients (always emit, even if unchanged, to sync UI)
-                        # Match the exact emit style used by safety_status (which works)
-                        socketio.emit('credit_status', {
-                            'credits': credits,
-                            'changed': changed
-                        })
-                        print(f"📤 Emitted credit_status to clients: credits={credits}, changed={changed}")
-                    except (ValueError, IndexError) as e:
-                        print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
-                        print(f"   Line was: '{line}'")
                 elif line.startswith("PERSON_DETECTED"):
                     if not lidar_person_detected:
                         lidar_person_detected = True
