@@ -158,38 +158,11 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
-        // Include main.js functionality first
-        // Credit-specific JavaScript will be added here
+        // Credit-specific JavaScript - must run AFTER main.js loads (socket is defined there)
         let currentCredits = 0;
 
-        // Credit management functions
-        function setCredits() {
-            const input = document.getElementById('set-credits-input');
-            const value = parseInt(input.value);
-            if (!isNaN(value) && value >= 0) {
-                socket.emit('set_credits', { credits: value });
-                input.value = '';
-            }
-        }
-
-        function addCredits() {
-            const input = document.getElementById('add-credits-input');
-            const value = parseInt(input.value);
-            if (!isNaN(value) && value > 0) {
-                socket.emit('add_credits', { credits: value });
-                input.value = '';
-            }
-        }
-
-        // Allow Enter key to submit
-        document.getElementById('set-credits-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') setCredits();
-        });
-        document.getElementById('add-credits-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') addCredits();
-        });
-        
         // Debug: Check if credit card exists on page load
         window.addEventListener('DOMContentLoaded', function() {
             const creditCard = document.getElementById('creditCard');
@@ -203,71 +176,111 @@
             }
         });
 
-        // Credit status update handler
-        socket.on('credit_status', (data) => {
-            console.log('💰 Received credit_status:', data);
-            currentCredits = data.credits || 0;
-            const creditValueEl = document.getElementById('credits-value');
-            const creditCardEl = document.getElementById('creditCard');
-            
-            if (creditValueEl) {
-                creditValueEl.textContent = currentCredits;
-                console.log('✅ Updated credits display to:', currentCredits);
-            } else {
-                console.error('❌ credits-value element not found!');
+        // Wait for socket to be defined (from main.js)
+        function initCreditSystem() {
+            if (typeof socket === 'undefined') {
+                console.warn('⚠️ Socket not ready yet, retrying...');
+                setTimeout(initCreditSystem, 100);
+                return;
             }
-            
-            if (!creditCardEl) {
-                console.error('❌ creditCard element not found!');
-            } else {
-                console.log('✅ Credit card element found and visible');
-            }
-            
-            // Visual feedback for credit changes
-            if (data.changed) {
-                creditValueEl.style.transform = 'scale(1.2)';
-                setTimeout(() => {
-                    creditValueEl.style.transform = 'scale(1)';
-                }, 200);
-            }
-            
-            // Change color when credits are zero
-            if (currentCredits === 0) {
-                creditCardEl.classList.add('credit-zero');
-            } else {
-                creditCardEl.classList.remove('credit-zero');
-            }
-        });
 
-        // Update safety banner to show credit override
-        const originalUpdateSafetyBanner = typeof updateSafetyBanner !== 'undefined' ? updateSafetyBanner : null;
-        function updateSafetyBannerWithCredits(enabled) {
-            if (originalUpdateSafetyBanner) {
-                originalUpdateSafetyBanner(enabled);
-            }
-            
-            const overrideIndicator = document.getElementById('credit-override-indicator');
-            if (currentCredits === 0) {
-                overrideIndicator.style.display = 'inline';
-            } else {
-                overrideIndicator.style.display = 'none';
-            }
-        }
-    </script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script>
-        // Override safety banner update after main.js loads
-        if (typeof updateSafetyBanner !== 'undefined') {
-            const originalUpdate = updateSafetyBanner;
-            updateSafetyBanner = function(enabled) {
-                originalUpdate(enabled);
-                const overrideIndicator = document.getElementById('credit-override-indicator');
-                if (currentCredits === 0) {
-                    overrideIndicator.style.display = 'inline';
-                } else {
-                    overrideIndicator.style.display = 'none';
+            console.log('✅ Socket ready, initializing credit system');
+
+            // Credit management functions
+            window.setCredits = function() {
+                const input = document.getElementById('set-credits-input');
+                const value = parseInt(input.value);
+                if (!isNaN(value) && value >= 0) {
+                    console.log('📤 Sending set_credits:', value);
+                    socket.emit('set_credits', { credits: value });
+                    input.value = '';
                 }
             };
+
+            window.addCredits = function() {
+                const input = document.getElementById('add-credits-input');
+                const value = parseInt(input.value);
+                if (!isNaN(value) && value > 0) {
+                    console.log('📤 Sending add_credits:', value);
+                    socket.emit('add_credits', { credits: value });
+                    input.value = '';
+                }
+            };
+
+            // Allow Enter key to submit
+            const setInput = document.getElementById('set-credits-input');
+            const addInput = document.getElementById('add-credits-input');
+            if (setInput) {
+                setInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') window.setCredits();
+                });
+            }
+            if (addInput) {
+                addInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') window.addCredits();
+                });
+            }
+
+            // Credit status update handler
+            socket.on('credit_status', (data) => {
+                console.log('💰 Received credit_status:', data);
+                currentCredits = data.credits || 0;
+                const creditValueEl = document.getElementById('credits-value');
+                const creditCardEl = document.getElementById('creditCard');
+                
+                if (creditValueEl) {
+                    creditValueEl.textContent = currentCredits;
+                    console.log('✅ Updated credits display to:', currentCredits);
+                } else {
+                    console.error('❌ credits-value element not found!');
+                }
+                
+                if (!creditCardEl) {
+                    console.error('❌ creditCard element not found!');
+                } else {
+                    console.log('✅ Credit card element found and visible');
+                }
+                
+                // Visual feedback for credit changes
+                if (data.changed && creditValueEl) {
+                    creditValueEl.style.transform = 'scale(1.2)';
+                    setTimeout(() => {
+                        creditValueEl.style.transform = 'scale(1)';
+                    }, 200);
+                }
+                
+                // Change color when credits are zero
+                if (creditCardEl) {
+                    if (currentCredits === 0) {
+                        creditCardEl.classList.add('credit-zero');
+                    } else {
+                        creditCardEl.classList.remove('credit-zero');
+                    }
+                }
+            });
+
+            // Override safety banner update after main.js loads
+            if (typeof updateSafetyBanner !== 'undefined') {
+                const originalUpdate = updateSafetyBanner;
+                window.updateSafetyBanner = function(enabled) {
+                    originalUpdate(enabled);
+                    const overrideIndicator = document.getElementById('credit-override-indicator');
+                    if (overrideIndicator) {
+                        if (currentCredits === 0) {
+                            overrideIndicator.style.display = 'inline';
+                        } else {
+                            overrideIndicator.style.display = 'none';
+                        }
+                    }
+                };
+            }
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCreditSystem);
+        } else {
+            initCreditSystem();
         }
     </script>
 </body>
