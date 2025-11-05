@@ -314,6 +314,22 @@ def lidar_reader_thread():
                     except Exception as e:
                         print(f"Error parsing LIDAR_STATUS: {e}")
                         pass
+                # Parse credit status updates from LiDAR Arduino
+                elif line.startswith("CREDITS:"):
+                    try:
+                        new_credits = int(line.split(":")[1].strip())
+                        with credits_lock:
+                            old_credits = credits
+                            credits = max(0, new_credits)  # Ensure non-negative
+                        if old_credits != credits:
+                            print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
+                            # Emit credit update to web clients
+                            socketio.emit('credit_status', {
+                                'credits': credits,
+                                'changed': True
+                            })
+                    except (ValueError, IndexError) as e:
+                        print(f"Error parsing CREDITS from LiDAR Arduino: {e}")
                 elif line.startswith("PERSON_DETECTED"):
                     if not lidar_person_detected:
                         lidar_person_detected = True
@@ -524,29 +540,24 @@ def serial_reader_thread():
                     print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
                     print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
                     
-                    # Send PBT hit notification to Arduino for credit tracking
+                    # Send PBT hit notification to LiDAR Arduino for credit tracking
                     try:
-                        ser.write(b"PBT_HIT\n")
-                        ser.flush()
-                        print("  PBT_HIT sent to Arduino for credit tracking")
-                        
-                        # IMMEDIATELY read Arduino response messages multiple times
-                        for i in range(10):  # Read multiple times to catch all responses
-                            read_arduino_messages(ser)
-                            time.sleep(0.01)  # Small delay between reads
+                        if lidar_ser and not lidar_ser.closed:
+                            lidar_ser.write(b"PBT_HIT\n")
+                            lidar_ser.flush()
+                            print("  PBT_HIT sent to LiDAR Arduino for credit tracking")
+                        else:
+                            print("  WARNING: LiDAR Arduino not connected - cannot send PBT_HIT")
                             
                     except Exception as e:
-                        print(f"  Error sending PBT_HIT: {e}")
+                        print(f"  Error sending PBT_HIT to LiDAR Arduino: {e}")
                     
-                    # Request credit status from Arduino
+                    # Request credit status from LiDAR Arduino
                     try:
-                        ser.write(b"STATUS\n")
-                        ser.flush()
-                        
-                        # Read Arduino response to STATUS command
-                        for i in range(5):
-                            read_arduino_messages(ser)
-                            time.sleep(0.01)
+                        if lidar_ser and not lidar_ser.closed:
+                            lidar_ser.write(b"GET_CREDITS\n")
+                            lidar_ser.flush()
+                            # Credit response will be read by lidar_reader_thread
                             
                     except Exception as e:
                         print(f"  Error requesting status: {e}")
@@ -762,15 +773,13 @@ def handle_set_credits(data):
         })
         print(f"💰 Credits set to: {credits}")
         
-        # Send command to Arduino for synchronization
-        if ser and not ser.closed:
+        # Send command to LiDAR Arduino for synchronization
+        if lidar_ser and not lidar_ser.closed:
             cmd = f"SET_CREDITS:{new_credits}\n".encode()
-            ser.write(cmd)
-            ser.flush()
-            # Arduino will send back CREDITS: message, which will confirm/correct if needed
-            # Read Arduino response immediately
+            lidar_ser.write(cmd)
+            lidar_ser.flush()
+            # LiDAR Arduino will send back CREDITS: message, which will be read by lidar_reader_thread
             time.sleep(0.05)  # Small delay for Arduino to process
-            read_arduino_messages(ser)
     except (ValueError, TypeError) as e:
         print(f"Error setting credits: {e}")
 
@@ -799,17 +808,16 @@ def handle_add_credits(data):
             print(f"💰 Sent {add_amount} credit add pulses via GPIO {CREDIT_GPIO_PIN}")
         else:
             # Fallback: use serial command if GPIO not available
-            if ser and not ser.closed:
+            if lidar_ser and not lidar_ser.closed:
                 cmd = f"ADD_CREDITS:{add_amount}\n".encode()
-                ser.write(cmd)
-                ser.flush()
+                lidar_ser.write(cmd)
+                lidar_ser.flush()
                 time.sleep(0.05)
-                read_arduino_messages(ser)
+                # Credit response will be read by lidar_reader_thread
         
-        # Wait for Arduino to process and send back CREDITS: message
+        # Wait for LiDAR Arduino to process and send back CREDITS: message
         time.sleep(0.1)  # Give Arduino time to process interrupts
-        if ser and not ser.closed:
-            read_arduino_messages(ser)
+        # Credit response will be read by lidar_reader_thread
         
         # Update credits from Arduino response (or optimistic update if no response)
         # Credits will be updated when Arduino sends CREDITS: message
