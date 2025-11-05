@@ -78,6 +78,11 @@ lidar_thread = None
 lidar_person_detected = False
 lidar_alarm_active = False
 
+# Legacy variables (not used with OR gate, but kept to match app_combined.py)
+tim100_detected = False
+tim150_detected = False
+tim240_alert = False
+
 # Credit tracking system (shared between threads)
 credits_lock = Lock()
 credits = 0  # Current credit count (tracked from Arduino)
@@ -185,8 +190,8 @@ def read_one_int(ser):
 
 
 def read_arduino_messages(ser):
-    """Read and display Arduino status messages, including credit updates."""
-    global tim100_detected, tim150_detected, credits
+    """Read and display Arduino status messages."""
+    global tim100_detected, tim150_detected
     try:
         # Limit the number of lines read per call to prevent blocking
         lines_read = 0
@@ -200,25 +205,8 @@ def read_arduino_messages(ser):
             if line and line.isdigit():
                 continue  # Skip raw PBT sensor data
             
-            # Parse credit status updates
-            if line.startswith("CREDITS:"):
-                try:
-                    new_credits = int(line.split(":")[1].strip())
-                    with credits_lock:
-                        old_credits = credits
-                        credits = max(0, new_credits)  # Ensure non-negative
-                    if old_credits != credits:
-                        print(f"💰 Credits updated: {credits} (was {old_credits})")
-                        # Emit credit update to web clients
-                        socketio.emit('credit_status', {
-                            'credits': credits,
-                            'changed': True
-                        }, broadcast=True, namespace='/')
-                except (ValueError, IndexError) as e:
-                    print(f"Error parsing CREDITS: {e}")
-            
             # Debug: Print only system messages
-            if line and (line.startswith("#") or "TiM" in line or "CREDIT" in line or "DEDUCT" in line):
+            if line and (line.startswith("#") or "TiM" in line or "CREDIT" in line or "PBT_HIT" in line):
                 print(f"DEBUG PBT Arduino: '{line}'")
             
             if line and line.startswith("#"):
@@ -241,7 +229,8 @@ def read_arduino_messages(ser):
         pass  # Ignore serial read errors
 
 def get_combined_lidar_status():
-    """Get combined status from all LiDARs. CRITICAL: Ignore LiDAR when credits == 0."""
+    """Get combined status from all LiDARs. CRITICAL: Ignore LiDAR when credits == 0.
+    Note: OR gate system can't distinguish which LiDAR detected, only that ANY detected."""
     global lidar_person_detected, lidar_alarm_active, credits
     
     # CREDIT OVERRIDE: When credits == 0, always return SAFE (ignore LiDAR)
@@ -251,28 +240,19 @@ def get_combined_lidar_status():
     if current_credits == 0:
         # No credits = LiDAR safety disabled (allows testing/play without credits)
         return "SAFE", {
-            'rear': False,
-            'left': False,
-            'right': False,
             'areas': [],
             'credits_zero_override': True  # Flag to indicate override
         }
     
     # Normal LiDAR safety logic when credits > 0
-    # Note: OR gate system can't distinguish which LiDAR detected, so we show "ANY"
+    # OR gate system: Can't distinguish which LiDAR detected, only that ANY detected
     if lidar_person_detected:
         return "DANGER", {
-            'rear': False,  # Can't tell - OR gate combines all inputs
-            'left': False,  # Can't tell - OR gate combines all inputs  
-            'right': False,  # Can't tell - OR gate combines all inputs
-            'areas': ["ANY"],  # Person detected by ANY LiDAR (OR gate)
+            'areas': ["ANY"],  # Person detected by ANY LiDAR (OR gate combines all inputs)
             'credits_zero_override': False
         }
     else:
         return "SAFE", {
-            'rear': False,
-            'left': False,
-            'right': False,
             'areas': [],
             'credits_zero_override': False
         }
@@ -285,42 +265,18 @@ def lidar_reader_thread():
         lidar_ser = serial.Serial(LIDAR_SERIAL_PORT, LIDAR_BAUD, timeout=1)
         time.sleep(0.2)
         lidar_ser.reset_input_buffer()
-        print(f"✅ LiDAR Arduino connected on {LIDAR_SERIAL_PORT} @ {LIDAR_BAUD} baud")
-        
-        # Request initial status from Arduino
-        time.sleep(0.5)  # Wait for Arduino to be ready
-        if lidar_ser and not lidar_ser.closed:
-            lidar_ser.write(b"STATUS\n")
-            lidar_ser.flush()
-            lidar_ser.write(b"GET_CREDITS\n")
-            lidar_ser.flush()
-            print("📡 Requested initial STATUS and GET_CREDITS from LiDAR Arduino")
+        print(f"DEBUG LIDAR: Arduino connected on {LIDAR_SERIAL_PORT} @ {LIDAR_BAUD} baud")
     except Exception as e:
-        print(f"❌ WARNING: Could not open LiDAR serial {LIDAR_SERIAL_PORT}: {e}")
+        print(f"WARNING: Could not open LiDAR serial {LIDAR_SERIAL_PORT}: {e}")
         return
 
     last_emit = 0
-    last_status_request = 0
     while serial_running:
         try:
-            # Periodically request status if we haven't received updates
-            now_time = time.time()
-            if now_time - last_status_request > 2.0:  # Request every 2 seconds
-                if lidar_ser and not lidar_ser.closed:
-                    lidar_ser.write(b"STATUS\n")
-                    lidar_ser.flush()
-                    lidar_ser.write(b"GET_CREDITS\n")
-                    lidar_ser.flush()
-                    last_status_request = now_time
-            
             while lidar_ser.in_waiting > 0:
                 line = lidar_ser.readline().decode(errors='ignore').strip()
                 if not line:
                     continue
-                
-                # Debug: Print all messages from LiDAR Arduino
-                print(f"📥 LiDAR Arduino: {line}")
-                
                 if line.startswith("LIDAR_STATUS:"):
                     # Format: LIDAR_STATUS:person,alarm  where 1/0
                     try:
@@ -330,86 +286,57 @@ def lidar_reader_thread():
                             new_person_detected = (parts[0].strip() == "1")
                             lidar_alarm_active = (parts[1].strip() == "1")
                             
-                            print(f"📊 LiDAR_STATUS parsed: person={new_person_detected}, alarm={lidar_alarm_active}")
-                            
-                            # Check if state changed before updating
-                            state_changed = (new_person_detected != lidar_person_detected)
-                            
-                            # Always emit status (even if unchanged, for initial display)
-                            lidar_person_detected = new_person_detected
-                            status_str, info = get_combined_lidar_status()
-                            safety_data = {
-                                'status': status_str,
-                                'game_enabled': (status_str == 'SAFE'),
-                                'areas': info
-                            }
-                            print(f"📤 Emitting safety_status: {safety_data}")
-                            
-                            # Use app context for emit
-                            with app.app_context():
-                                socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
-                            
-                            # Log if state changed
-                            if state_changed:
+                            # Check for state change and immediately emit
+                            if new_person_detected != lidar_person_detected:
+                                lidar_person_detected = new_person_detected
+                                status_str, info = get_combined_lidar_status()
+                                socketio.emit('safety_status', {
+                                    'status': status_str,
+                                    'game_enabled': (status_str == 'SAFE'),
+                                    'areas': info
+                                })
                                 print(f"🔄 LiDAR state changed: {'DANGER' if lidar_person_detected else 'SAFE'}")
+                            else:
+                                lidar_person_detected = new_person_detected
                     except Exception as e:
-                        print(f"❌ Error parsing LIDAR_STATUS: {e}")
+                        print(f"Error parsing LIDAR_STATUS: {e}")
                         pass
-                # Parse credit status updates from LiDAR Arduino
+                # Parse credit status updates from LiDAR Arduino (credit-specific addition)
                 elif line.startswith("CREDITS:"):
                     try:
-                        # Extract number after "CREDITS:"
                         credit_str = line.split(":", 1)[1].strip()
                         new_credits = int(credit_str)
-                        print(f"🔍 Parsing CREDITS: line='{line}', extracted='{credit_str}', int={new_credits}")
-                        
                         with credits_lock:
                             old_credits = credits
-                            credits = max(0, new_credits)  # Ensure non-negative
-                        
-                        print(f"💰 Credits parsed: {credits} (was {old_credits})")
-                        
-                        # Always emit credit update (even if unchanged, for initial display)
-                        credit_data = {
-                            'credits': credits,
-                            'changed': (old_credits != credits)
-                        }
-                        print(f"📤 Emitting credit_status: {credit_data}")
-                        
-                        # Use app context for emit
-                        with app.app_context():
-                            socketio.emit('credit_status', credit_data, broadcast=True, namespace='/')
-                        
+                            credits = max(0, new_credits)
                         if old_credits != credits:
                             print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
+                        # Emit credit update to web clients
+                        socketio.emit('credit_status', {
+                            'credits': credits,
+                            'changed': (old_credits != credits)
+                        })
                     except (ValueError, IndexError) as e:
-                        print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
-                        print(f"   Line was: '{line}'")
-                        import traceback
-                        traceback.print_exc()
+                        print(f"Error parsing CREDITS from LiDAR Arduino: {e}")
                 elif line.startswith("PERSON_DETECTED"):
                     if not lidar_person_detected:
                         lidar_person_detected = True
                         status_str, info = get_combined_lidar_status()
-                        safety_data = {
+                        socketio.emit('safety_status', {
                             'status': status_str,
                             'game_enabled': (status_str == 'SAFE'),
                             'areas': info
-                        }
-                        with app.app_context():
-                            socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
+                        })
                 elif "Area clear" in line or "✅" in line:
                     # Clear message from Arduino - force immediate update
                     if lidar_person_detected:
                         lidar_person_detected = False
                         status_str, info = get_combined_lidar_status()
-                        safety_data = {
+                        socketio.emit('safety_status', {
                             'status': status_str,
                             'game_enabled': (status_str == 'SAFE'),
                             'areas': info
-                        }
-                        with app.app_context():
-                            socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
+                        })
                         print(f"🔄 LiDAR cleared: SAFE")
                 elif line.startswith("#"):
                     print(f"  LiDAR Arduino: {line}")
@@ -418,17 +345,11 @@ def lidar_reader_thread():
             now = time.time()
             if now - last_emit > 0.5:
                 status_str, info = get_combined_lidar_status()
-                safety_data = {
+                socketio.emit('safety_status', {
                     'status': status_str,
                     'game_enabled': (status_str == 'SAFE'),
                     'areas': info
-                }
-                print(f"📤 Periodic emit safety_status: {safety_data}")
-                
-                # Use app context for emit
-                with app.app_context():
-                    socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
-                
+                })
                 last_emit = now
         except Exception as e:
             # Keep thread alive on transient serial errors
@@ -558,13 +479,10 @@ def serial_reader_thread():
         safety_status, safety_info = get_combined_lidar_status()
         game_enabled = (safety_status == "SAFE")
         
-        # Check credits before pulse generation
-        with credits_lock:
-            current_credits = credits
-        
-        # Only process pulse generation if game is enabled AND credits > 0
-        # When disabled or no credits, keep system armed but continue reading serial data normally
-        if game_enabled and current_credits > 0:
+        # Only process pulse generation if game is enabled
+        # When disabled, keep system armed but continue reading serial data normally
+        # Credit check is done separately - if no credits, we still track hits but don't deduct
+        if game_enabled:
             if armed:
                 # Check for trigger (only when armed)
                 if envelope > TRIGGER_THRESHOLD:
@@ -590,13 +508,13 @@ def serial_reader_thread():
                     width_ms = calculate_pulse_width(peak)
                     
                     pulse_count += 1
-                    print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
+                    print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms")
                     print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
                     
                     # Track PBT hits on Pi (2 hits = 1 credit deducted)
+                    # This is credit-specific logic, doesn't affect core PBT/LiDAR logic
                     global pbt_hit_count
                     pbt_hit_count += 1
-                    print(f"  PBT hit #{pbt_hit_count} of {HITS_PER_CREDIT}")
                     
                     # When 2 hits reached, deduct 1 credit from LiDAR Arduino
                     if pbt_hit_count >= HITS_PER_CREDIT:
@@ -610,23 +528,8 @@ def serial_reader_thread():
                                     if lidar_ser and not lidar_ser.closed:
                                         lidar_ser.write(b"DEDUCT_CREDIT\n")
                                         lidar_ser.flush()
-                                        print("  DEDUCT_CREDIT sent to LiDAR Arduino")
-                                    else:
-                                        print("  WARNING: LiDAR Arduino not connected - cannot deduct credit")
                                 except Exception as e:
                                     print(f"  Error sending DEDUCT_CREDIT: {e}")
-                            else:
-                                print("  No credits remaining - hit counted but no credit to deduct")
-                    
-                    # Request credit status from LiDAR Arduino to update display
-                    try:
-                        if lidar_ser and not lidar_ser.closed:
-                            lidar_ser.write(b"GET_CREDITS\n")
-                            lidar_ser.flush()
-                            # Credit response will be read by lidar_reader_thread
-                            
-                    except Exception as e:
-                        print(f"  Error requesting credit status: {e}")
                     
                     # Generate arcade button press using Arduino GPIO control
                     arcade_button_press(ser, width_ms)
@@ -766,60 +669,30 @@ def handle_safety_request():
 
 @socketio.on('test_person_detected')
 def handle_test_person():
-    """Test function to simulate person detection."""
-    global tim240_alert
-    tim240_alert = True
+    """Test function to simulate person detection (OR gate - any LiDAR)."""
+    global lidar_person_detected
+    lidar_person_detected = True
     safety_status, safety_info = get_combined_lidar_status()
     emit('safety_status', {
         'status': safety_status,
-        'game_enabled': (safety_status == 'safe'),
+        'game_enabled': (safety_status == 'SAFE'),
         'areas': safety_info
     })
-    print("Test: Person detected (REAR) - Game disabled")
+    print("Test: Person detected (ANY LiDAR via OR gate) - Game disabled")
 
 
 @socketio.on('test_area_clear')
 def handle_test_clear():
     """Test function to simulate area clear."""
-    global tim240_alert, tim100_detected, tim150_detected
-    tim240_alert = False
-    tim100_detected = False
-    tim150_detected = False
+    global lidar_person_detected
+    lidar_person_detected = False
     safety_status, safety_info = get_combined_lidar_status()
     emit('safety_status', {
         'status': safety_status,
-        'game_enabled': (safety_status == 'safe'),
+        'game_enabled': (safety_status == 'SAFE'),
         'areas': safety_info
     })
     print("Test: All areas clear - Game enabled")
-
-
-@socketio.on('test_tim100_detected')
-def handle_test_tim100():
-    """Test function to simulate TiM100 detection."""
-    global tim100_detected
-    tim100_detected = True
-    safety_status, safety_info = get_combined_lidar_status()
-    emit('safety_status', {
-        'status': safety_status,
-        'game_enabled': (safety_status == 'safe'),
-        'areas': safety_info
-    })
-    print("Test: TiM100 detected (LEFT) - Game disabled")
-
-
-@socketio.on('test_tim150_detected')
-def handle_test_tim150():
-    """Test function to simulate TiM150 detection."""
-    global tim150_detected
-    tim150_detected = True
-    safety_status, safety_info = get_combined_lidar_status()
-    emit('safety_status', {
-        'status': safety_status,
-        'game_enabled': (safety_status == 'safe'),
-        'areas': safety_info
-    })
-    print("Test: TiM150 detected (RIGHT) - Game disabled")
 
 
 @socketio.on('set_credits')
