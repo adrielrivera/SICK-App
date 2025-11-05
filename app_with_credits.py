@@ -766,39 +766,51 @@ def handle_add_credits(data):
         
         print(f"💰 Adding {add_amount} credits (current: {current_credits}, new: {new_credits})")
         
-        # Trigger hardware signal for each credit to add (falling edge: 3.3V → 0V)
-        if GPIO_AVAILABLE:
-            print(f"📤 Sending {add_amount} credit add pulses via GPIO {CREDIT_GPIO_PIN}")
-            for i in range(add_amount):
-                # Ensure we start HIGH (idle state) and hold for stability
-                GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
-                time.sleep(0.02)  # 20ms HIGH (stable before falling edge)
-                # Falling edge: HIGH → LOW triggers Arduino interrupt
-                GPIO.output(CREDIT_GPIO_PIN, GPIO.LOW)
-                time.sleep(0.02)  # 20ms LOW (hold low for clean signal, prevents bounce)
-                # Return to HIGH (idle state)
-                GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
-                time.sleep(0.1)  # 100ms delay between pulses (total 140ms per credit, well above 500ms debounce)
-                if (i + 1) % 5 == 0:
-                    print(f"   Sent {i + 1}/{add_amount} pulses...")
-            print(f"✅ Sent all {add_amount} credit add pulses")
-        else:
-            # Fallback: use serial command if GPIO not available
-            print(f"📤 Using serial command (GPIO not available)")
-            if lidar_ser and not lidar_ser.closed:
-                cmd = f"ADD_CREDITS:{add_amount}\n".encode()
-                lidar_ser.write(cmd)
+        # CRITICAL: Sync Arduino with Pi's current credit count first, then add
+        # This ensures Arduino and Pi are always in sync
+        if lidar_ser and not lidar_ser.closed:
+            # Step 1: Sync Arduino to current Pi value
+            sync_cmd = f"SET_CREDITS:{current_credits}\n".encode()
+            lidar_ser.write(sync_cmd)
+            lidar_ser.flush()
+            print(f"📤 Sent SET_CREDITS:{current_credits} to Arduino (sync)")
+            time.sleep(0.05)  # Small delay for Arduino to process
+            
+            # Step 2: Add credits via hardware or serial
+            if GPIO_AVAILABLE:
+                print(f"📤 Sending {add_amount} credit add pulses via GPIO {CREDIT_GPIO_PIN}")
+                for i in range(add_amount):
+                    # Ensure we start HIGH (idle state) and hold for stability
+                    GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+                    time.sleep(0.02)  # 20ms HIGH (stable before falling edge)
+                    # Falling edge: HIGH → LOW triggers Arduino interrupt
+                    GPIO.output(CREDIT_GPIO_PIN, GPIO.LOW)
+                    time.sleep(0.02)  # 20ms LOW (hold low for clean signal, prevents bounce)
+                    # Return to HIGH (idle state)
+                    GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+                    time.sleep(0.1)  # 100ms delay between pulses (total 140ms per credit, well above 500ms debounce)
+                    if (i + 1) % 5 == 0:
+                        print(f"   Sent {i + 1}/{add_amount} pulses...")
+                print(f"✅ Sent all {add_amount} credit add pulses")
+            else:
+                # Fallback: use serial command if GPIO not available
+                print(f"📤 Using serial ADD_CREDITS command (GPIO not available)")
+                add_cmd = f"ADD_CREDITS:{add_amount}\n".encode()
+                lidar_ser.write(add_cmd)
                 lidar_ser.flush()
                 print(f"📤 Sent ADD_CREDITS:{add_amount} to Arduino")
                 time.sleep(0.05)
-                # Credit response will be read by lidar_reader_thread
-            else:
-                print(f"⚠️  LiDAR serial not available, using optimistic update only")
-                # Optimistic update if no serial
-                with credits_lock:
-                    credits = new_credits
+            
+            # Step 3: Update local credits and wait for Arduino confirmation
+            with credits_lock:
+                credits = new_credits
+        else:
+            print(f"⚠️  LiDAR serial not available, updating locally only")
+            # Update locally if no serial
+            with credits_lock:
+                credits = new_credits
         
-        # Optimistic update: emit immediately (Arduino will send correct value later)
+        # Emit update to web clients immediately
         emit('credit_status', {
             'credits': new_credits,
             'changed': True
@@ -807,11 +819,11 @@ def handle_add_credits(data):
             'credits': new_credits,
             'changed': True
         }, broadcast=True, namespace='/')
-        print(f"📤 Emitted optimistic credit update: {new_credits}")
+        print(f"📤 Emitted credit update: {new_credits}")
         
         # Wait for LiDAR Arduino to process and send back CREDITS: message
-        # The actual credit value will be updated when Arduino sends CREDITS: message
-        time.sleep(0.2)  # Give Arduino time to process interrupts
+        # The Arduino will send back the final value, which will sync everything
+        time.sleep(0.2)  # Give Arduino time to process
     except (ValueError, TypeError) as e:
         print(f"❌ Error adding credits: {e}")
         import traceback
