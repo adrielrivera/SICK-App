@@ -49,6 +49,10 @@ A_MIN, A_MAX = 30, 100  # Improved proportional range (30-100) for better scorin
 W_MIN_MS, W_MAX_MS = 10, 100  # Shorter max pulse for better high scores
 REARM_LEVEL = TRIGGER_THRESHOLD * 0.4
 
+# Grounding issue filtering
+MIN_VALID_READING = 10  # Reject readings below this (grounding issues cause near-0 readings)
+MIN_PEAK_THRESHOLD = 25  # Minimum peak to accept (higher than TRIGGER_THRESHOLD to filter noise)
+
 # Statistics for pulse generation
 pulse_count = 0
 
@@ -89,6 +93,19 @@ def map_linear_inverse(x, x0, x1, y0, y1):
         return y1
     t = (x - x0) / (x1 - x0)
     return y1 - t * (y1 - y0)  # Inverted: subtract instead of add
+
+
+def calculate_pulse_width(peak):
+    """Calculate pulse width from peak value - map 30-100 ADC to 40-10ms (same as pbt_tester.py)."""
+    a_clamped = clamp(peak, A_MIN, A_MAX)
+    
+    # Map 30-100 ADC to 40-10ms pulse width for better distribution
+    # 30 ADC -> 40ms (good score)
+    # 100 ADC -> 10ms (maximum score)
+    # Linear mapping across the full range (same as pbt_tester.py)
+    width_ms = 40 - (a_clamped - 30) * (30 / 70)  # 30->40ms, 100->10ms
+    
+    return clamp(width_ms, W_MIN_MS, W_MAX_MS)
 
 
 def arcade_button_press(ser, duration_ms):
@@ -371,8 +388,22 @@ def serial_reader_thread():
     else:
         baseline = 40.0
     
-    envelope = 0.0
+    # Initialize envelope from initial readings to avoid high startup spike
+    envelope_samples = []
+    t1 = time.time()
+    while time.time() - t1 < 0.1:  # 100ms of envelope samples
+        v = read_one_int(ser)
+        if v is not None and v >= MIN_VALID_READING:  # Filter grounding issues
+            xmag = abs(v - baseline)
+            envelope_samples.append(xmag)
+    
+    if envelope_samples:
+        envelope = sum(envelope_samples) / len(envelope_samples)  # Start with average
+    else:
+        envelope = 0.0  # Fallback
+    
     print(f"Baseline calibrated: {baseline:.1f} ADC counts")
+    print(f"Envelope initialized: {envelope:.1f} ADC counts")
     
     # Main reading loop
     start_time = time.time()
@@ -416,6 +447,11 @@ def serial_reader_thread():
         
         if v is None:
             time.sleep(0.001)
+            continue
+        
+        # Filter out grounding issues: reject readings that are too low (sudden drop to 0)
+        if v < MIN_VALID_READING:
+            # Skip this reading - likely a grounding issue causing false spike in envelope
             continue
         
         sample_count += 1
@@ -464,14 +500,16 @@ def serial_reader_thread():
                 
                 # Check if capture window ended or envelope dropped
                 if now >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
-                    # Map amplitude to pulse width INVERSELY
+                    # Validate peak before processing - reject if too low (likely grounding issue)
+                    if peak < MIN_PEAK_THRESHOLD:
+                        print(f"⚠️  Rejected false hit: Peak={peak:.1f} below minimum threshold {MIN_PEAK_THRESHOLD}")
+                        armed = True  # Re-arm immediately
+                        continue
+                    
+                    # Map amplitude to pulse width (same calculation as pbt_tester.py)
                     # High peak → Short pulse (strong hit = quick button press)
                     # Low peak → Long pulse (weak hit = slow button press)
-                    a_clamped = clamp(peak, A_MIN, A_MAX)
-                    width_ms = clamp(
-                        map_linear_inverse(a_clamped, A_MIN, A_MAX, W_MIN_MS, W_MAX_MS),
-                        W_MIN_MS, W_MAX_MS
-                    )
+                    width_ms = calculate_pulse_width(peak)
                     
                     pulse_count += 1
                     print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
