@@ -737,7 +737,7 @@ def handle_set_credits(data):
             socketio.emit('credit_status', {
                 'credits': credits,
                 'changed': True
-            }, broadcast=True, namespace='/')
+            })
             print(f"📤 Emitted credit_status to all clients via socketio.emit()")
         except Exception as e:
             print(f"❌ socketio.emit() failed: {e}")
@@ -836,7 +836,7 @@ def handle_add_credits(data):
         socketio.emit('credit_status', {
             'credits': new_credits,
             'changed': True
-        }, broadcast=True, namespace='/')
+        })
         print(f"📤 Emitted credit update: {new_credits}")
         
         # Wait for LiDAR Arduino to process and send back CREDITS: message
