@@ -1,39 +1,58 @@
-📥 Received set_credits event: {'credits': 1}
-💰 Setting credits to: 1
-✅ Local credits updated to: 1
-📤 Emitted credit_status to sender via emit()
-❌ socketio.emit() failed: Server.emit() got an unexpected keyword argument 'broadcast'
-Traceback (most recent call last):
-  File "/home/sick7/SICK/SICK-App/app_with_credits.py", line 737, in handle_set_credits
-    socketio.emit('credit_status', {
-    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
-        'credits': credits,
-        ^^^^^^^^^^^^^^^^^^^
-        'changed': True
-        ^^^^^^^^^^^^^^^
-    }, broadcast=True, namespace='/')
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/sick7/SICK/SICK-App/venv/lib/python3.13/site-packages/flask_socketio/__init__.py", line 462, in emit
-    self.server.emit(event, *args, namespace=namespace, to=to,
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                     skip_sid=skip_sid, callback=callback, **kwargs)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: Server.emit() got an unexpected keyword argument 'broadcast'
-📤 Sent SET_CREDITS:1 to Arduino
-📥 [RAW] LiDAR Arduino line: '# Credits set to: 1'
-   Line length: 19, Starts with CREDITS: False
-   First 10 chars: '# Credits '
-   repr: '# Credits set to: 1'
-  LiDAR Arduino: # Credits set to: 1
-📥 [RAW] LiDAR Arduino line: 'CREDITS:1'
+📥 [RAW] LiDAR Arduino line: 'CREDITS:8'
    Line length: 9, Starts with CREDITS: True
-   First 10 chars: 'CREDITS:1'
-   repr: 'CREDITS:1'
-🔍 ENTERING CREDITS parsing block for line: 'CREDITS:1' (stripped: 'CREDITS:1')
+   First 10 chars: 'CREDITS:8'
+   repr: 'CREDITS:8'
+🔍 ENTERING CREDITS parsing block for line: 'CREDITS:8' (stripped: 'CREDITS:8')
    Step 1: Splitting line...
-   Step 2: Parsing int from '1'...
-   Step 3: Got new_credits=1, acquiring lock...
-   Step 4: Lock released, credits=1, old_credits=1
-💰 Credits status received (unchanged): 1
+   Step 2: Parsing int from '8'...
+   Step 3: Got new_credits=8, checking cooldown...
+   Step 4: Not in cooldown, updating normally...
+   Step 6: changed=True, credits=8, old_credits=7
+💰 Credits updated (from LiDAR Arduino): 8 (was 7)
+⚠️  WARNING: Credits INCREASED from Arduino! This shouldn't happen during deduction.
+   Possible causes: Arduino received credit add signal, or status update conflict
    Step 5: Emitting to socketio...
-📤 Emitted credit_status to clients: credits=1, changed=False
+📤 Emitted credit_status to clients: credits=8, changed=True
+📥 [RAW] LiDAR Arduino line: '# Credit added via hardware signal (Pin 2 falling edge)'
+   Line length: 55, Starts with CREDITS: False
+   First 10 chars: '# Credit a'
+   repr: '# Credit added via hardware signal (Pin 2 falling edge)'
+  LiDAR Arduino: # Credit added via hardware signal (Pin 2 falling edge)
+Pulse #1: Peak=55.2 → 29 ms
+  Mapping: Peak 55.2 → Pulse 29ms (Range: 30-100 → 10-100ms)
+🎯 PBT Hit #1: hit_count=1/2
+📥 [RAW] LiDAR Arduino line: 'CREDITS:9'
+   Line length: 9, Starts with CREDITS: True
+   First 10 chars: 'CREDITS:9'
+   repr: 'CREDITS:9'
+🔍 ENTERING CREDITS parsing block for line: 'CREDITS:9' (stripped: 'CREDITS:9')
+   Step 1: Splitting line...
+   Step 2: Parsing int from '9'...
+   Step 3: Got new_credits=9, checking cooldown...
+   Step 4: Not in cooldown, updating normally...
+   Step 6: changed=True, credits=9, old_credits=8
+💰 Credits updated (from LiDAR Arduino): 9 (was 8)
+⚠️  WARNING: Credits INCREASED from Arduino! This shouldn't happen during deduction.
+   Possible causes: Arduino received credit add signal, or status update conflict
+   Step 5: Emitting to socketio...
+📤 Emitted credit_status to clients: credits=9, changed=True
+📥 [RAW] LiDAR Arduino line: '# Credit added via hardware signal (Pin 2 falling edge)'
+   Line length: 55, Starts with CREDITS: False
+   First 10 chars: '# Credit a'
+   repr: '# Credit added via hardware signal (Pin 2 falling edge)'
+  LiDAR Arduino: # Credit added via hardware signal (Pin 2 falling edge)
+Pulse #2: Peak=59.7 → 27 ms
+  Mapping: Peak 59.7 → Pulse 27ms (Range: 30-100 → 10-100ms)
+🎯 PBT Hit #2: hit_count=2/2
+Exception in thread Thread-1 (serial_reader_thread):
+Traceback (most recent call last):
+  File "/usr/lib/python3.13/threading.py", line 1043, in _bootstrap_inner
+    self.run()
+    ~~~~~~~~^^
+  File "/usr/lib/python3.13/threading.py", line 994, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sick7/SICK/SICK-App/app_with_credits.py", line 591, in serial_reader_thread
+    current_credits_before = credits
+                             ^^^^^^^
+UnboundLocalError: cannot access local variable 'credits' where it is not associated with a value
