@@ -302,10 +302,11 @@ def lidar_reader_thread():
                         else:
                             print(f"💰 Credits status received (unchanged): {credits}")
                         # Emit credit update to web clients (always emit, even if unchanged, to sync UI)
+                        # Note: broadcast=True and namespace='/' required when emitting from background thread
                         socketio.emit('credit_status', {
                             'credits': credits,
                             'changed': changed
-                        })
+                        }, broadcast=True, namespace='/')
                         print(f"📤 Emitted credit_status to clients: credits={credits}, changed={changed}")
                     except (ValueError, IndexError) as e:
                         print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
