@@ -1,20 +1,39 @@
-📥 [RAW] LiDAR Arduino line: 'CREDITS:72'
-   Line length: 10, Starts with CREDITS: True
-   First 10 chars: 'CREDITS:72'
-   repr: 'CREDITS:72'
-🔍 ENTERING CREDITS parsing block for line: 'CREDITS:72' (stripped: 'CREDITS:72')
-   Step 1: Splitting line...
-   Step 2: Parsing int from '72'...
-   Step 3: Got new_credits=72, acquiring lock...
-❌ Error in CREDITS parsing block: UnboundLocalError: cannot access local variable 'credits' where it is not associated with a value
-   Line was: 'CREDITS:72'
+📥 Received set_credits event: {'credits': 1}
+💰 Setting credits to: 1
+✅ Local credits updated to: 1
+📤 Emitted credit_status to sender via emit()
+❌ socketio.emit() failed: Server.emit() got an unexpected keyword argument 'broadcast'
 Traceback (most recent call last):
-  File "/home/sick7/SICK/SICK-App/app_with_credits.py", line 283, in lidar_reader_thread
-    old_credits = credits
-                  ^^^^^^^
-UnboundLocalError: cannot access local variable 'credits' where it is not associated with a value
-📥 [RAW] LiDAR Arduino line: '# Credit added via hardware signal (Pin 2 falling edge)'
-   Line length: 55, Starts with CREDITS: False
-   First 10 chars: '# Credit a'
-   repr: '# Credit added via hardware signal (Pin 2 falling edge)'
-  LiDAR Arduino: # Credit added via hardware signal (Pin 2 falling edge)
+  File "/home/sick7/SICK/SICK-App/app_with_credits.py", line 737, in handle_set_credits
+    socketio.emit('credit_status', {
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+        'credits': credits,
+        ^^^^^^^^^^^^^^^^^^^
+        'changed': True
+        ^^^^^^^^^^^^^^^
+    }, broadcast=True, namespace='/')
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sick7/SICK/SICK-App/venv/lib/python3.13/site-packages/flask_socketio/__init__.py", line 462, in emit
+    self.server.emit(event, *args, namespace=namespace, to=to,
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     skip_sid=skip_sid, callback=callback, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: Server.emit() got an unexpected keyword argument 'broadcast'
+📤 Sent SET_CREDITS:1 to Arduino
+📥 [RAW] LiDAR Arduino line: '# Credits set to: 1'
+   Line length: 19, Starts with CREDITS: False
+   First 10 chars: '# Credits '
+   repr: '# Credits set to: 1'
+  LiDAR Arduino: # Credits set to: 1
+📥 [RAW] LiDAR Arduino line: 'CREDITS:1'
+   Line length: 9, Starts with CREDITS: True
+   First 10 chars: 'CREDITS:1'
+   repr: 'CREDITS:1'
+🔍 ENTERING CREDITS parsing block for line: 'CREDITS:1' (stripped: 'CREDITS:1')
+   Step 1: Splitting line...
+   Step 2: Parsing int from '1'...
+   Step 3: Got new_credits=1, acquiring lock...
+   Step 4: Lock released, credits=1, old_credits=1
+💰 Credits status received (unchanged): 1
+   Step 5: Emitting to socketio...
+📤 Emitted credit_status to clients: credits=1, changed=False
