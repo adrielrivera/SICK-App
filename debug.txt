@@ -1,8 +1,18 @@
-📥 [RAW] LiDAR Arduino line: 'CREDITS:68'
+📥 [RAW] LiDAR Arduino line: 'CREDITS:72'
    Line length: 10, Starts with CREDITS: True
-   First 10 chars: 'CREDITS:68'
-   repr: 'CREDITS:68'
-🔍 ENTERING CREDITS parsing block for line: 'CREDITS:68' (stripped: 'CREDITS:68')
+   First 10 chars: 'CREDITS:72'
+   repr: 'CREDITS:72'
+🔍 ENTERING CREDITS parsing block for line: 'CREDITS:72' (stripped: 'CREDITS:72')
+   Step 1: Splitting line...
+   Step 2: Parsing int from '72'...
+   Step 3: Got new_credits=72, acquiring lock...
+❌ Error in CREDITS parsing block: UnboundLocalError: cannot access local variable 'credits' where it is not associated with a value
+   Line was: 'CREDITS:72'
+Traceback (most recent call last):
+  File "/home/sick7/SICK/SICK-App/app_with_credits.py", line 283, in lidar_reader_thread
+    old_credits = credits
+                  ^^^^^^^
+UnboundLocalError: cannot access local variable 'credits' where it is not associated with a value
 📥 [RAW] LiDAR Arduino line: '# Credit added via hardware signal (Pin 2 falling edge)'
    Line length: 55, Starts with CREDITS: False
    First 10 chars: '# Credit a'
