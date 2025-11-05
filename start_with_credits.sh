@@ -1,10 +1,8 @@
 #!/bin/bash
-# Start PBT + LiDAR system with Credit Tracking
-# Credit system: 2 PBT hits = 1 credit deducted
-# LiDAR safety disabled when credits == 0
+# Start combined PBT + LiDAR (dual Arduino) system with Credit Tracking
 
 echo "=========================================="
-echo "Starting PBT + LiDAR System with Credit Tracking"
+echo "Starting Combined PBT + LiDAR (Dual Arduino) with Credit Tracking"
 echo "=========================================="
 
 set -e
@@ -30,17 +28,10 @@ if [ $? -ne 0 ]; then
 fi
 
 # Port hints
-if [ -e "/dev/ttyUSB0" ]; then echo "PBT Arduino (with credits): /dev/ttyUSB0"; fi
+if [ -e "/dev/ttyUSB0" ]; then echo "PBT Arduino: /dev/ttyUSB0"; fi
 if [ -e "/dev/ttyUSB1" ]; then echo "LiDAR Arduino: /dev/ttyUSB1"; fi
 
-echo ""
-echo "Credit System Features:"
-echo "  - 2 PBT hits = 1 credit deducted"
-echo "  - LiDAR safety DISABLED when credits == 0"
-echo "  - Use webapp to set/add credits (admin)"
-echo ""
-
-echo "Launching app_with_credits.py..."
+echo "Launching app_with_credits.py (do not start lidar_webapp.py separately)"
 exec python3 app_with_credits.py
 
 

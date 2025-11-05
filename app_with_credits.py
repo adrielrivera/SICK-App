@@ -82,6 +82,10 @@ lidar_alarm_active = False
 credits_lock = Lock()
 credits = 0  # Current credit count (tracked from Arduino)
 
+# PBT hit counting (done on Pi, not Arduino)
+pbt_hit_count = 0  # Count PBT hits (2 hits = 1 credit deducted)
+HITS_PER_CREDIT = 2
+
 
 def clamp(x, lo, hi):
     """Clamp value between min and max."""
@@ -214,7 +218,7 @@ def read_arduino_messages(ser):
                     print(f"Error parsing CREDITS: {e}")
             
             # Debug: Print only system messages
-            if line and (line.startswith("#") or "TiM" in line or "CREDIT" in line or "PBT_HIT" in line):
+            if line and (line.startswith("#") or "TiM" in line or "CREDIT" in line or "DEDUCT" in line):
                 print(f"DEBUG PBT Arduino: '{line}'")
             
             if line and line.startswith("#"):
@@ -476,22 +480,8 @@ def serial_reader_thread():
     else:
         baseline = 40.0
     
-    # Initialize envelope from initial readings to avoid high startup spike
-    envelope_samples = []
-    t1 = time.time()
-    while time.time() - t1 < 0.1:  # 100ms of envelope samples
-        v = read_one_int(ser)
-        if v is not None and v >= MIN_VALID_READING:  # Filter grounding issues
-            xmag = abs(v - baseline)
-            envelope_samples.append(xmag)
-    
-    if envelope_samples:
-        envelope = sum(envelope_samples) / len(envelope_samples)  # Start with average
-    else:
-        envelope = 0.0  # Fallback
-    
+    envelope = 0.0
     print(f"Baseline calibrated: {baseline:.1f} ADC counts")
-    print(f"Envelope initialized: {envelope:.1f} ADC counts")
     
     # Main reading loop
     start_time = time.time()
@@ -603,19 +593,32 @@ def serial_reader_thread():
                     print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms (INVERTED)")
                     print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
                     
-                    # Send PBT hit notification to LiDAR Arduino for credit tracking
-                    try:
-                        if lidar_ser and not lidar_ser.closed:
-                            lidar_ser.write(b"PBT_HIT\n")
-                            lidar_ser.flush()
-                            print("  PBT_HIT sent to LiDAR Arduino for credit tracking")
-                        else:
-                            print("  WARNING: LiDAR Arduino not connected - cannot send PBT_HIT")
-                            
-                    except Exception as e:
-                        print(f"  Error sending PBT_HIT to LiDAR Arduino: {e}")
+                    # Track PBT hits on Pi (2 hits = 1 credit deducted)
+                    global pbt_hit_count
+                    pbt_hit_count += 1
+                    print(f"  PBT hit #{pbt_hit_count} of {HITS_PER_CREDIT}")
                     
-                    # Request credit status from LiDAR Arduino
+                    # When 2 hits reached, deduct 1 credit from LiDAR Arduino
+                    if pbt_hit_count >= HITS_PER_CREDIT:
+                        pbt_hit_count = 0  # Reset counter
+                        
+                        # Check if credits available before deducting
+                        with credits_lock:
+                            if credits > 0:
+                                # Send DEDUCT_CREDIT command to LiDAR Arduino
+                                try:
+                                    if lidar_ser and not lidar_ser.closed:
+                                        lidar_ser.write(b"DEDUCT_CREDIT\n")
+                                        lidar_ser.flush()
+                                        print("  DEDUCT_CREDIT sent to LiDAR Arduino")
+                                    else:
+                                        print("  WARNING: LiDAR Arduino not connected - cannot deduct credit")
+                                except Exception as e:
+                                    print(f"  Error sending DEDUCT_CREDIT: {e}")
+                            else:
+                                print("  No credits remaining - hit counted but no credit to deduct")
+                    
+                    # Request credit status from LiDAR Arduino to update display
                     try:
                         if lidar_ser and not lidar_ser.closed:
                             lidar_ser.write(b"GET_CREDITS\n")
@@ -623,7 +626,7 @@ def serial_reader_thread():
                             # Credit response will be read by lidar_reader_thread
                             
                     except Exception as e:
-                        print(f"  Error requesting status: {e}")
+                        print(f"  Error requesting credit status: {e}")
                     
                     # Generate arcade button press using Arduino GPIO control
                     arcade_button_press(ser, width_ms)
@@ -822,7 +825,7 @@ def handle_test_tim150():
 @socketio.on('set_credits')
 def handle_set_credits(data):
     """Admin: Set credits directly."""
-    global credits, ser
+    global credits, ser, pbt_hit_count
     try:
         new_credits = int(data.get('credits', 0))
         if new_credits < 0:
@@ -831,6 +834,9 @@ def handle_set_credits(data):
         # Update credits immediately (optimistic update)
         with credits_lock:
             credits = new_credits
+        
+        # Reset hit counter when credits are manually set
+        pbt_hit_count = 0
         
         # Emit update to web clients immediately
         socketio.emit('credit_status', {
@@ -853,11 +859,14 @@ def handle_set_credits(data):
 @socketio.on('add_credits')
 def handle_add_credits(data):
     """Admin: Add credits."""
-    global credits, ser
+    global credits, ser, pbt_hit_count
     try:
         add_amount = int(data.get('credits', 0))
         if add_amount < 0:
             add_amount = 0
+        
+        # Reset hit counter when credits are manually added
+        pbt_hit_count = 0
         
         # Trigger hardware signal for each credit to add (falling edge: 3.3V → 0V)
         if GPIO_AVAILABLE:
