@@ -229,32 +229,16 @@ def read_arduino_messages(ser):
         pass  # Ignore serial read errors
 
 def get_combined_lidar_status():
-    """Get combined status from all LiDARs. CRITICAL: Ignore LiDAR when credits == 0.
-    Note: OR gate system can't distinguish which LiDAR detected, only that ANY detected."""
-    global lidar_person_detected, lidar_alarm_active, credits
-    
-    # CREDIT OVERRIDE: When credits == 0, always return SAFE (ignore LiDAR)
-    with credits_lock:
-        current_credits = credits
-    
-    if current_credits == 0:
-        # No credits = LiDAR safety disabled (allows testing/play without credits)
-        return "SAFE", {
-            'areas': [],
-            'credits_zero_override': True  # Flag to indicate override
-        }
-    
-    # Normal LiDAR safety logic when credits > 0
-    # OR gate system: Can't distinguish which LiDAR detected, only that ANY detected
+    """Get combined status from all LiDARs."""
+    global lidar_person_detected, lidar_alarm_active
+
     if lidar_person_detected:
         return "DANGER", {
-            'areas': ["ANY"],  # Person detected by ANY LiDAR (OR gate combines all inputs)
-            'credits_zero_override': False
+            'areas': ["ANY"]
         }
     else:
         return "SAFE", {
-            'areas': [],
-            'credits_zero_override': False
+            'areas': []
         }
 
 
