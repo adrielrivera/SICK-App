@@ -331,11 +331,13 @@ def lidar_reader_thread():
                             # Always emit status (even if unchanged, for initial display)
                             lidar_person_detected = new_person_detected
                             status_str, info = get_combined_lidar_status()
-                            socketio.emit('safety_status', {
+                            safety_data = {
                                 'status': status_str,
                                 'game_enabled': (status_str == 'SAFE'),
                                 'areas': info
-                            })
+                            }
+                            print(f"📤 Emitting safety_status: {safety_data}")
+                            socketio.emit('safety_status', safety_data)
                             
                             # Log if state changed
                             if state_changed:
@@ -352,10 +354,12 @@ def lidar_reader_thread():
                             credits = max(0, new_credits)  # Ensure non-negative
                         print(f"💰 Credits parsed: {credits} (was {old_credits})")
                         # Always emit credit update (even if unchanged, for initial display)
-                        socketio.emit('credit_status', {
+                        credit_data = {
                             'credits': credits,
                             'changed': (old_credits != credits)
-                        })
+                        }
+                        print(f"📤 Emitting credit_status: {credit_data}")
+                        socketio.emit('credit_status', credit_data)
                         if old_credits != credits:
                             print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
                     except (ValueError, IndexError) as e:
@@ -387,11 +391,13 @@ def lidar_reader_thread():
             now = time.time()
             if now - last_emit > 0.5:
                 status_str, info = get_combined_lidar_status()
-                socketio.emit('safety_status', {
+                safety_data = {
                     'status': status_str,
                     'game_enabled': (status_str == 'SAFE'),
                     'areas': info
-                })
+                }
+                print(f"📤 Periodic emit safety_status: {safety_data}")
+                socketio.emit('safety_status', safety_data)
                 last_emit = now
         except Exception as e:
             # Keep thread alive on transient serial errors

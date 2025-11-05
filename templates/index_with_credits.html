@@ -188,11 +188,16 @@
 
         // Credit status update handler
         socket.on('credit_status', (data) => {
+            console.log('💰 Received credit_status:', data);
             currentCredits = data.credits || 0;
             const creditValueEl = document.getElementById('credits-value');
             const creditCardEl = document.getElementById('creditCard');
             
-            creditValueEl.textContent = currentCredits;
+            if (creditValueEl) {
+                creditValueEl.textContent = currentCredits;
+            } else {
+                console.error('❌ credits-value element not found!');
+            }
             
             // Visual feedback for credit changes
             if (data.changed) {

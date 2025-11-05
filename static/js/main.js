@@ -219,6 +219,7 @@ socket.on('sensor_data', (data) => {
 
 // Safety system WebSocket events
 socket.on('safety_status', (data) => {
+    console.log('🔔 Received safety_status:', data);
     gameEnabled = !!data.game_enabled;
     updateSafetyBanner(gameEnabled);
 });
