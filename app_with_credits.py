@@ -261,6 +261,9 @@ def lidar_reader_thread():
                 line = lidar_ser.readline().decode(errors='ignore').strip()
                 if not line:
                     continue
+                # Debug: Log all lines from LiDAR Arduino (can be commented out later)
+                if line.startswith("CREDITS:") or "credit" in line.lower():
+                    print(f"📥 LiDAR Arduino line: '{line}'")
                 if line.startswith("LIDAR_STATUS:"):
                     # Format: LIDAR_STATUS:person,alarm  where 1/0
                     try:
@@ -293,15 +296,20 @@ def lidar_reader_thread():
                         with credits_lock:
                             old_credits = credits
                             credits = max(0, new_credits)
-                        if old_credits != credits:
+                        changed = (old_credits != credits)
+                        if changed:
                             print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
-                        # Emit credit update to web clients
+                        else:
+                            print(f"💰 Credits status received (unchanged): {credits}")
+                        # Emit credit update to web clients (always emit, even if unchanged, to sync UI)
                         socketio.emit('credit_status', {
                             'credits': credits,
-                            'changed': (old_credits != credits)
+                            'changed': changed
                         })
+                        print(f"📤 Emitted credit_status to clients: credits={credits}, changed={changed}")
                     except (ValueError, IndexError) as e:
-                        print(f"Error parsing CREDITS from LiDAR Arduino: {e}")
+                        print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
+                        print(f"   Line was: '{line}'")
                 elif line.startswith("PERSON_DETECTED"):
                     if not lidar_person_detected:
                         lidar_person_detected = True
