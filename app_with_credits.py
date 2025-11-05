@@ -706,10 +706,13 @@ def handle_test_clear():
 def handle_set_credits(data):
     """Admin: Set credits directly."""
     global credits, ser, pbt_hit_count, lidar_ser
+    print(f"📥 Received set_credits event: {data}")
     try:
         new_credits = int(data.get('credits', 0))
         if new_credits < 0:
             new_credits = 0
+        
+        print(f"💰 Setting credits to: {new_credits}")
         
         # Update credits immediately (optimistic update)
         with credits_lock:
@@ -718,17 +721,28 @@ def handle_set_credits(data):
         # Reset hit counter when credits are manually set
         pbt_hit_count = 0
         
-        print(f"💰 Credits set to: {credits}")
+        print(f"✅ Local credits updated to: {credits}")
         
         # Emit update to web clients immediately (use emit() for sender, socketio.emit() for all)
-        emit('credit_status', {
-            'credits': credits,
-            'changed': True
-        })
-        socketio.emit('credit_status', {
-            'credits': credits,
-            'changed': True
-        }, broadcast=True, namespace='/')
+        try:
+            emit('credit_status', {
+                'credits': credits,
+                'changed': True
+            })
+            print(f"📤 Emitted credit_status to sender via emit()")
+        except Exception as e:
+            print(f"⚠️  emit() failed: {e}, trying socketio.emit()")
+        
+        try:
+            socketio.emit('credit_status', {
+                'credits': credits,
+                'changed': True
+            }, broadcast=True, namespace='/')
+            print(f"📤 Emitted credit_status to all clients via socketio.emit()")
+        except Exception as e:
+            print(f"❌ socketio.emit() failed: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Send command to LiDAR Arduino for synchronization
         if lidar_ser and not lidar_ser.closed:
@@ -742,6 +756,10 @@ def handle_set_credits(data):
             print(f"⚠️  LiDAR serial not available, credits set locally only")
     except (ValueError, TypeError) as e:
         print(f"❌ Error setting credits: {e}")
+        import traceback
+        traceback.print_exc()
+    except Exception as e:
+        print(f"❌ Unexpected error in set_credits: {e}")
         import traceback
         traceback.print_exc()
 
