@@ -787,14 +787,15 @@ def handle_add_credits(data):
         # Trigger hardware signal for each credit to add (falling edge: 5V → 0V)
         if GPIO_AVAILABLE:
             for _ in range(add_amount):
-                # Start HIGH (5V), then LOW (0V) to create falling edge
+                # Ensure we start HIGH (idle state)
                 GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
-                time.sleep(0.001)  # 1ms HIGH
-                GPIO.output(CREDIT_GPIO_PIN, GPIO.LOW)  # Falling edge triggers Arduino
-                time.sleep(0.01)  # 10ms LOW before next pulse
-                # Keep LOW, Arduino pull-up will bring it back to HIGH when we release
-            # Return to HIGH (idle state)
-            GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+                time.sleep(0.005)  # 5ms HIGH (stable before falling edge)
+                # Falling edge: HIGH → LOW triggers Arduino interrupt
+                GPIO.output(CREDIT_GPIO_PIN, GPIO.LOW)
+                time.sleep(0.005)  # 5ms LOW (hold low for clean signal)
+                # Return to HIGH (idle) - Arduino pull-up will keep it HIGH anyway
+                GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+                time.sleep(0.01)  # 10ms delay between pulses (total 20ms per credit)
             print(f"💰 Sent {add_amount} credit add pulses via GPIO {CREDIT_GPIO_PIN}")
         else:
             # Fallback: use serial command if GPIO not available
