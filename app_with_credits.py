@@ -209,7 +209,7 @@ def read_arduino_messages(ser):
                         socketio.emit('credit_status', {
                             'credits': credits,
                             'changed': True
-                        })
+                        }, broadcast=True, namespace='/')
                 except (ValueError, IndexError) as e:
                     print(f"Error parsing CREDITS: {e}")
             
@@ -337,7 +337,7 @@ def lidar_reader_thread():
                                 'areas': info
                             }
                             print(f"📤 Emitting safety_status: {safety_data}")
-                            socketio.emit('safety_status', safety_data)
+                            socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
                             
                             # Log if state changed
                             if state_changed:
@@ -359,7 +359,7 @@ def lidar_reader_thread():
                             'changed': (old_credits != credits)
                         }
                         print(f"📤 Emitting credit_status: {credit_data}")
-                        socketio.emit('credit_status', credit_data)
+                        socketio.emit('credit_status', credit_data, broadcast=True, namespace='/')
                         if old_credits != credits:
                             print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
                     except (ValueError, IndexError) as e:
@@ -372,7 +372,7 @@ def lidar_reader_thread():
                             'status': status_str,
                             'game_enabled': (status_str == 'SAFE'),
                             'areas': info
-                        })
+                        }, broadcast=True, namespace='/')
                 elif "Area clear" in line or "✅" in line:
                     # Clear message from Arduino - force immediate update
                     if lidar_person_detected:
@@ -382,7 +382,7 @@ def lidar_reader_thread():
                             'status': status_str,
                             'game_enabled': (status_str == 'SAFE'),
                             'areas': info
-                        })
+                        }, broadcast=True, namespace='/')
                         print(f"🔄 LiDAR cleared: SAFE")
                 elif line.startswith("#"):
                     print(f"  LiDAR Arduino: {line}")
@@ -397,7 +397,7 @@ def lidar_reader_thread():
                     'areas': info
                 }
                 print(f"📤 Periodic emit safety_status: {safety_data}")
-                socketio.emit('safety_status', safety_data)
+                socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
                 last_emit = now
         except Exception as e:
             # Keep thread alive on transient serial errors
@@ -809,7 +809,7 @@ def handle_set_credits(data):
         socketio.emit('credit_status', {
             'credits': credits,
             'changed': True
-        })
+        }, broadcast=True, namespace='/')
         print(f"💰 Credits set to: {credits}")
         
         # Send command to LiDAR Arduino for synchronization
