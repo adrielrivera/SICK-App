@@ -244,7 +244,7 @@ def get_combined_lidar_status():
 
 def lidar_reader_thread():
     """Background thread: read LiDAR alarm Arduino on ttyUSB1 and update person_detected."""
-    global lidar_ser, lidar_person_detected, lidar_alarm_active
+    global lidar_ser, lidar_person_detected, lidar_alarm_active, credits
     try:
         lidar_ser = serial.Serial(LIDAR_SERIAL_PORT, LIDAR_BAUD, timeout=1)
         time.sleep(0.2)
