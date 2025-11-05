@@ -263,7 +263,7 @@ def lidar_reader_thread():
                     continue
                 # Debug: Log all lines from LiDAR Arduino (can be commented out later)
                 if line.startswith("CREDITS:") or "credit" in line.lower():
-                    print(f"📥 LiDAR Arduino line: '{line}'")
+                    print(f"📥 [RAW] LiDAR Arduino line: '{line}'")
                 if line.startswith("LIDAR_STATUS:"):
                     # Format: LIDAR_STATUS:person,alarm  where 1/0
                     try:
@@ -302,11 +302,11 @@ def lidar_reader_thread():
                         else:
                             print(f"💰 Credits status received (unchanged): {credits}")
                         # Emit credit update to web clients (always emit, even if unchanged, to sync UI)
-                        # Note: broadcast=True and namespace='/' required when emitting from background thread
+                        # Match the exact emit style used by safety_status (which works)
                         socketio.emit('credit_status', {
                             'credits': credits,
                             'changed': changed
-                        }, broadcast=True, namespace='/')
+                        })
                         print(f"📤 Emitted credit_status to clients: credits={credits}, changed={changed}")
                     except (ValueError, IndexError) as e:
                         print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
