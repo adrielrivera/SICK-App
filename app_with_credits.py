@@ -264,11 +264,17 @@ def lidar_reader_thread():
                 # Debug: Log all lines from LiDAR Arduino (can be commented out later)
                 if line.startswith("CREDITS:") or "credit" in line.lower():
                     print(f"📥 [RAW] LiDAR Arduino line: '{line}'")
+                    print(f"   Line length: {len(line)}, Starts with CREDITS: {line.startswith('CREDITS:')}")
+                    print(f"   First 10 chars: '{line[:10] if len(line) >= 10 else line}'")
+                    print(f"   repr: {repr(line)}")
                 
                 # Parse credit status updates from LiDAR Arduino (credit-specific addition) - CHECK FIRST
-                if line.startswith("CREDITS:"):
+                # Use strip() to handle any whitespace issues
+                stripped_line = line.strip()
+                if stripped_line.startswith("CREDITS:"):
+                    print(f"🔍 ENTERING CREDITS parsing block for line: '{line}' (stripped: '{stripped_line}')")
                     try:
-                        credit_str = line.split(":", 1)[1].strip()
+                        credit_str = stripped_line.split(":", 1)[1].strip()
                         new_credits = int(credit_str)
                         with credits_lock:
                             old_credits = credits
