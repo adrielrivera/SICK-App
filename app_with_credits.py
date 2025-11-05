@@ -278,18 +278,42 @@ def lidar_reader_thread():
         lidar_ser = serial.Serial(LIDAR_SERIAL_PORT, LIDAR_BAUD, timeout=1)
         time.sleep(0.2)
         lidar_ser.reset_input_buffer()
-        print(f"DEBUG LIDAR: Arduino connected on {LIDAR_SERIAL_PORT} @ {LIDAR_BAUD} baud")
+        print(f"✅ LiDAR Arduino connected on {LIDAR_SERIAL_PORT} @ {LIDAR_BAUD} baud")
+        
+        # Request initial status from Arduino
+        time.sleep(0.5)  # Wait for Arduino to be ready
+        if lidar_ser and not lidar_ser.closed:
+            lidar_ser.write(b"STATUS\n")
+            lidar_ser.flush()
+            lidar_ser.write(b"GET_CREDITS\n")
+            lidar_ser.flush()
+            print("📡 Requested initial STATUS and GET_CREDITS from LiDAR Arduino")
     except Exception as e:
-        print(f"WARNING: Could not open LiDAR serial {LIDAR_SERIAL_PORT}: {e}")
+        print(f"❌ WARNING: Could not open LiDAR serial {LIDAR_SERIAL_PORT}: {e}")
         return
 
     last_emit = 0
+    last_status_request = 0
     while serial_running:
         try:
+            # Periodically request status if we haven't received updates
+            now_time = time.time()
+            if now_time - last_status_request > 2.0:  # Request every 2 seconds
+                if lidar_ser and not lidar_ser.closed:
+                    lidar_ser.write(b"STATUS\n")
+                    lidar_ser.flush()
+                    lidar_ser.write(b"GET_CREDITS\n")
+                    lidar_ser.flush()
+                    last_status_request = now_time
+            
             while lidar_ser.in_waiting > 0:
                 line = lidar_ser.readline().decode(errors='ignore').strip()
                 if not line:
                     continue
+                
+                # Debug: Print all messages from LiDAR Arduino
+                print(f"📥 LiDAR Arduino: {line}")
+                
                 if line.startswith("LIDAR_STATUS:"):
                     # Format: LIDAR_STATUS:person,alarm  where 1/0
                     try:
@@ -299,20 +323,25 @@ def lidar_reader_thread():
                             new_person_detected = (parts[0].strip() == "1")
                             lidar_alarm_active = (parts[1].strip() == "1")
                             
-                            # Check for state change and immediately emit
-                            if new_person_detected != lidar_person_detected:
-                                lidar_person_detected = new_person_detected
-                                status_str, info = get_combined_lidar_status()
-                                socketio.emit('safety_status', {
-                                    'status': status_str,
-                                    'game_enabled': (status_str == 'SAFE'),
-                                    'areas': info
-                                })
+                            print(f"📊 LiDAR_STATUS parsed: person={new_person_detected}, alarm={lidar_alarm_active}")
+                            
+                            # Check if state changed before updating
+                            state_changed = (new_person_detected != lidar_person_detected)
+                            
+                            # Always emit status (even if unchanged, for initial display)
+                            lidar_person_detected = new_person_detected
+                            status_str, info = get_combined_lidar_status()
+                            socketio.emit('safety_status', {
+                                'status': status_str,
+                                'game_enabled': (status_str == 'SAFE'),
+                                'areas': info
+                            })
+                            
+                            # Log if state changed
+                            if state_changed:
                                 print(f"🔄 LiDAR state changed: {'DANGER' if lidar_person_detected else 'SAFE'}")
-                            else:
-                                lidar_person_detected = new_person_detected
                     except Exception as e:
-                        print(f"Error parsing LIDAR_STATUS: {e}")
+                        print(f"❌ Error parsing LIDAR_STATUS: {e}")
                         pass
                 # Parse credit status updates from LiDAR Arduino
                 elif line.startswith("CREDITS:"):
@@ -321,15 +350,16 @@ def lidar_reader_thread():
                         with credits_lock:
                             old_credits = credits
                             credits = max(0, new_credits)  # Ensure non-negative
+                        print(f"💰 Credits parsed: {credits} (was {old_credits})")
+                        # Always emit credit update (even if unchanged, for initial display)
+                        socketio.emit('credit_status', {
+                            'credits': credits,
+                            'changed': (old_credits != credits)
+                        })
                         if old_credits != credits:
                             print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
-                            # Emit credit update to web clients
-                            socketio.emit('credit_status', {
-                                'credits': credits,
-                                'changed': True
-                            })
                     except (ValueError, IndexError) as e:
-                        print(f"Error parsing CREDITS from LiDAR Arduino: {e}")
+                        print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
                 elif line.startswith("PERSON_DETECTED"):
                     if not lidar_person_detected:
                         lidar_person_detected = True
@@ -654,10 +684,12 @@ def handle_connect():
             'pulse_count': pulse_count
         })
     
-    # Send initial safety status
+    # Send initial safety status (use get_combined_lidar_status for accurate status)
+    status_str, info = get_combined_lidar_status()
     emit('safety_status', {
-        'status': 'safe' if game_enabled else 'danger',
-        'game_enabled': game_enabled
+        'status': status_str,
+        'game_enabled': (status_str == 'SAFE'),
+        'areas': info
     })
     
     # Send initial credit status
@@ -666,6 +698,7 @@ def handle_connect():
             'credits': credits,
             'changed': False
         })
+        print(f"📤 Sent initial status to client: credits={credits}, lidar_status={status_str}")
 
 
 @socketio.on('disconnect')
