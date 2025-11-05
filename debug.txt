@@ -1,33 +1,10 @@
-(venv) sick7@raspberrypi:~/SICK/SICK-Capstone/arduino_stuff/lidar_detection $ ./upload.sh 
-==========================================
-LiDAR Detection Arduino Upload Script
-==========================================
-Found Arduino at: /dev/ttyUSB1
-Compiling and uploading lidar_detection.ino...
-/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino: In function 'void processCommand(String)':
-/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:134:18: error: 'ALARM_LED_PIN' was not declared in this scope
-     digitalWrite(ALARM_LED_PIN, LOW);
-                  ^~~~~~~~~~~~~
-/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:134:18: note: suggested alternative: 'LED_PIN'
-     digitalWrite(ALARM_LED_PIN, LOW);
-                  ^~~~~~~~~~~~~
-                  LED_PIN
-/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:138:18: error: 'TIM240_PIN' was not declared in this scope
-     digitalWrite(TIM240_PIN, HIGH);
-                  ^~~~~~~~~~
-/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:138:18: note: suggested alternative: 'INPUT_PIN'
-     digitalWrite(TIM240_PIN, HIGH);
-                  ^~~~~~~~~~
-                  INPUT_PIN
-/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:142:18: error: 'TIM240_PIN' was not declared in this scope
-     digitalWrite(TIM240_PIN, LOW);
-                  ^~~~~~~~~~
-/home/sick7/SICK/SICK-Capstone/arduino_stuff/lidar_detection/lidar_detection.ino:142:18: note: suggested alternative: 'INPUT_PIN'
-     digitalWrite(TIM240_PIN, LOW);
-                  ^~~~~~~~~~
-                  INPUT_PIN
-
-Used platform Version Path
-arduino:avr   1.8.6   /home/sick7/.arduino15/packages/arduino/hardware/avr/1.8.6
-Error during build: exit status 1
-ERROR: Arduino compilation failed.
+📥 [RAW] LiDAR Arduino line: 'CREDITS:68'
+   Line length: 10, Starts with CREDITS: True
+   First 10 chars: 'CREDITS:68'
+   repr: 'CREDITS:68'
+🔍 ENTERING CREDITS parsing block for line: 'CREDITS:68' (stripped: 'CREDITS:68')
+📥 [RAW] LiDAR Arduino line: '# Credit added via hardware signal (Pin 2 falling edge)'
+   Line length: 55, Starts with CREDITS: False
+   First 10 chars: '# Credit a'
+   repr: '# Credit added via hardware signal (Pin 2 falling edge)'
+  LiDAR Arduino: # Credit added via hardware signal (Pin 2 falling edge)
