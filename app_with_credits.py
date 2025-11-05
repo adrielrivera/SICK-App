@@ -255,19 +255,22 @@ def get_combined_lidar_status():
         }
     
     # Normal LiDAR safety logic when credits > 0
+    # Note: OR gate system can't distinguish which LiDAR detected, so we show "ANY"
     if lidar_person_detected:
         return "DANGER", {
-            'rear': False,
-            'left': False,
-            'right': False,
-            'areas': ["ANY"]
+            'rear': False,  # Can't tell - OR gate combines all inputs
+            'left': False,  # Can't tell - OR gate combines all inputs  
+            'right': False,  # Can't tell - OR gate combines all inputs
+            'areas': ["ANY"],  # Person detected by ANY LiDAR (OR gate)
+            'credits_zero_override': False
         }
     else:
         return "SAFE", {
             'rear': False,
             'left': False,
             'right': False,
-            'areas': []
+            'areas': [],
+            'credits_zero_override': False
         }
 
 
@@ -337,7 +340,10 @@ def lidar_reader_thread():
                                 'areas': info
                             }
                             print(f"📤 Emitting safety_status: {safety_data}")
-                            socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
+                            
+                            # Use app context for emit
+                            with app.app_context():
+                                socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
                             
                             # Log if state changed
                             if state_changed:
@@ -348,41 +354,58 @@ def lidar_reader_thread():
                 # Parse credit status updates from LiDAR Arduino
                 elif line.startswith("CREDITS:"):
                     try:
-                        new_credits = int(line.split(":")[1].strip())
+                        # Extract number after "CREDITS:"
+                        credit_str = line.split(":", 1)[1].strip()
+                        new_credits = int(credit_str)
+                        print(f"🔍 Parsing CREDITS: line='{line}', extracted='{credit_str}', int={new_credits}")
+                        
                         with credits_lock:
                             old_credits = credits
                             credits = max(0, new_credits)  # Ensure non-negative
+                        
                         print(f"💰 Credits parsed: {credits} (was {old_credits})")
+                        
                         # Always emit credit update (even if unchanged, for initial display)
                         credit_data = {
                             'credits': credits,
                             'changed': (old_credits != credits)
                         }
                         print(f"📤 Emitting credit_status: {credit_data}")
-                        socketio.emit('credit_status', credit_data, broadcast=True, namespace='/')
+                        
+                        # Use app context for emit
+                        with app.app_context():
+                            socketio.emit('credit_status', credit_data, broadcast=True, namespace='/')
+                        
                         if old_credits != credits:
                             print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
                     except (ValueError, IndexError) as e:
                         print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
+                        print(f"   Line was: '{line}'")
+                        import traceback
+                        traceback.print_exc()
                 elif line.startswith("PERSON_DETECTED"):
                     if not lidar_person_detected:
                         lidar_person_detected = True
                         status_str, info = get_combined_lidar_status()
-                        socketio.emit('safety_status', {
+                        safety_data = {
                             'status': status_str,
                             'game_enabled': (status_str == 'SAFE'),
                             'areas': info
-                        }, broadcast=True, namespace='/')
+                        }
+                        with app.app_context():
+                            socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
                 elif "Area clear" in line or "✅" in line:
                     # Clear message from Arduino - force immediate update
                     if lidar_person_detected:
                         lidar_person_detected = False
                         status_str, info = get_combined_lidar_status()
-                        socketio.emit('safety_status', {
+                        safety_data = {
                             'status': status_str,
                             'game_enabled': (status_str == 'SAFE'),
                             'areas': info
-                        }, broadcast=True, namespace='/')
+                        }
+                        with app.app_context():
+                            socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
                         print(f"🔄 LiDAR cleared: SAFE")
                 elif line.startswith("#"):
                     print(f"  LiDAR Arduino: {line}")
@@ -397,7 +420,11 @@ def lidar_reader_thread():
                     'areas': info
                 }
                 print(f"📤 Periodic emit safety_status: {safety_data}")
-                socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
+                
+                # Use app context for emit
+                with app.app_context():
+                    socketio.emit('safety_status', safety_data, broadcast=True, namespace='/')
+                
                 last_emit = now
         except Exception as e:
             # Keep thread alive on transient serial errors
