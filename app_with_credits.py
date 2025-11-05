@@ -15,6 +15,15 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 from config import *
 
+# GPIO for credit add signal (falling edge to Arduino)
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+    CREDIT_GPIO_PIN = 18  # GPIO18 (Physical Pin 12) - Credit add signal to Arduino Pin 2
+except ImportError:
+    GPIO_AVAILABLE = False
+    print("⚠️  RPi.GPIO not available - credit add signal disabled")
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = SECRET_KEY
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
@@ -742,21 +751,26 @@ def handle_set_credits(data):
         if new_credits < 0:
             new_credits = 0
         
-        # Send command to Arduino
+        # Update credits immediately (optimistic update)
+        with credits_lock:
+            credits = new_credits
+        
+        # Emit update to web clients immediately
+        socketio.emit('credit_status', {
+            'credits': credits,
+            'changed': True
+        })
+        print(f"💰 Credits set to: {credits}")
+        
+        # Send command to Arduino for synchronization
         if ser and not ser.closed:
             cmd = f"SET_CREDITS:{new_credits}\n".encode()
             ser.write(cmd)
             ser.flush()
-            print(f"Admin: Set credits to {new_credits}")
-            # Arduino will send back CREDITS: message, which will update our variable
-        else:
-            # Fallback: update directly if Arduino not available
-            with credits_lock:
-                credits = new_credits
-            socketio.emit('credit_status', {
-                'credits': credits,
-                'changed': True
-            })
+            # Arduino will send back CREDITS: message, which will confirm/correct if needed
+            # Read Arduino response immediately
+            time.sleep(0.05)  # Small delay for Arduino to process
+            read_arduino_messages(ser)
     except (ValueError, TypeError) as e:
         print(f"Error setting credits: {e}")
 
@@ -770,23 +784,38 @@ def handle_add_credits(data):
         if add_amount < 0:
             add_amount = 0
         
-        # Send command to Arduino
-        if ser and not ser.closed:
-            cmd = f"ADD_CREDITS:{add_amount}\n".encode()
-            ser.write(cmd)
-            ser.flush()
-            print(f"Admin: Adding {add_amount} credits")
-            # Arduino will send back CREDITS: message, which will update our variable
+        # Trigger hardware signal for each credit to add (falling edge: 5V → 0V)
+        if GPIO_AVAILABLE:
+            for _ in range(add_amount):
+                # Start HIGH (5V), then LOW (0V) to create falling edge
+                GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+                time.sleep(0.001)  # 1ms HIGH
+                GPIO.output(CREDIT_GPIO_PIN, GPIO.LOW)  # Falling edge triggers Arduino
+                time.sleep(0.01)  # 10ms LOW before next pulse
+                # Keep LOW, Arduino pull-up will bring it back to HIGH when we release
+            # Return to HIGH (idle state)
+            GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+            print(f"💰 Sent {add_amount} credit add pulses via GPIO {CREDIT_GPIO_PIN}")
         else:
-            # Fallback: update directly if Arduino not available
-            with credits_lock:
-                credits += add_amount
-            socketio.emit('credit_status', {
-                'credits': credits,
-                'changed': True
-            })
+            # Fallback: use serial command if GPIO not available
+            if ser and not ser.closed:
+                cmd = f"ADD_CREDITS:{add_amount}\n".encode()
+                ser.write(cmd)
+                ser.flush()
+                time.sleep(0.05)
+                read_arduino_messages(ser)
+        
+        # Wait for Arduino to process and send back CREDITS: message
+        time.sleep(0.1)  # Give Arduino time to process interrupts
+        if ser and not ser.closed:
+            read_arduino_messages(ser)
+        
+        # Update credits from Arduino response (or optimistic update if no response)
+        # Credits will be updated when Arduino sends CREDITS: message
     except (ValueError, TypeError) as e:
         print(f"Error adding credits: {e}")
+    except Exception as e:
+        print(f"Error triggering GPIO credit signal: {e}")
 
 
 @socketio.on('request_credits')
@@ -824,11 +853,27 @@ if __name__ == '__main__':
     print(f"Arcade Interface (Arduino GPIO):")
     print(f"  Arduino Pin 6: Press START signal (Active HIGH, 5V output)")
     print(f"  Arduino Pin 5: Press ACTIVE signal (Active LOW, 0V output)")
+    if GPIO_AVAILABLE:
+        print(f"Credit Add Signal (Hardware):")
+        print(f"  Pi GPIO {CREDIT_GPIO_PIN} → Arduino Pin 2 (falling edge 5V→0V)")
+    else:
+        print(f"Credit Add Signal: Serial command (GPIO not available)")
     print(f"Pulse Mapping: HIGH peak → SHORT pulse (INVERTED)")
     print(f"Peak Range: {A_MIN}-{A_MAX} ADC → Pulse Range: {W_MIN_MS}-{W_MAX_MS}ms")
     print(f"Trigger threshold: {TRIGGER_THRESHOLD} ADC counts")
     print(f"Web server: http://{HOST}:{PORT}")
     print("=" * 60)
+    
+    # Initialize GPIO for credit add signal
+    if GPIO_AVAILABLE:
+        try:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(CREDIT_GPIO_PIN, GPIO.OUT)
+            GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)  # Start HIGH (idle state)
+            print(f"✅ GPIO {CREDIT_GPIO_PIN} initialized (HIGH/idle)")
+        except Exception as e:
+            print(f"⚠️  GPIO initialization failed: {e}")
+            print("   Credit add will use serial commands instead")
     
     # Start serial reader thread (includes GPIO pulse generation)
     start_serial_thread()
@@ -842,6 +887,14 @@ if __name__ == '__main__':
         serial_running = False
         if ser:
             ser.close()
+        # Cleanup GPIO
+        if GPIO_AVAILABLE:
+            try:
+                GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)  # Return to idle
+                GPIO.cleanup()
+                print("✅ GPIO cleaned up")
+            except:
+                pass
         # Send reset command to Arduino to reset GPIO pins
         try:
             if ser and not ser.closed:
