@@ -274,11 +274,15 @@ def lidar_reader_thread():
                 if stripped_line.startswith("CREDITS:"):
                     print(f"🔍 ENTERING CREDITS parsing block for line: '{line}' (stripped: '{stripped_line}')")
                     try:
+                        print(f"   Step 1: Splitting line...")
                         credit_str = stripped_line.split(":", 1)[1].strip()
+                        print(f"   Step 2: Parsing int from '{credit_str}'...")
                         new_credits = int(credit_str)
+                        print(f"   Step 3: Got new_credits={new_credits}, acquiring lock...")
                         with credits_lock:
                             old_credits = credits
                             credits = max(0, new_credits)
+                        print(f"   Step 4: Lock released, credits={credits}, old_credits={old_credits}")
                         changed = (old_credits != credits)
                         if changed:
                             print(f"💰 Credits updated (from LiDAR Arduino): {credits} (was {old_credits})")
@@ -286,14 +290,17 @@ def lidar_reader_thread():
                             print(f"💰 Credits status received (unchanged): {credits}")
                         # Emit credit update to web clients (always emit, even if unchanged, to sync UI)
                         # Match the exact emit style used by safety_status (which works)
+                        print(f"   Step 5: Emitting to socketio...")
                         socketio.emit('credit_status', {
                             'credits': credits,
                             'changed': changed
                         })
                         print(f"📤 Emitted credit_status to clients: credits={credits}, changed={changed}")
-                    except (ValueError, IndexError) as e:
-                        print(f"❌ Error parsing CREDITS from LiDAR Arduino: {e}")
+                    except Exception as e:
+                        print(f"❌ Error in CREDITS parsing block: {type(e).__name__}: {e}")
                         print(f"   Line was: '{line}'")
+                        import traceback
+                        traceback.print_exc()
                 elif line.startswith("LIDAR_STATUS:"):
                     # Format: LIDAR_STATUS:person,alarm  where 1/0
                     try:
