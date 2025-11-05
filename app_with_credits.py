@@ -16,12 +16,15 @@ from flask_socketio import SocketIO, emit
 from config import *
 
 # GPIO for credit add signal (falling edge to Arduino)
+# WARNING: If GPIO pin has noise issues, set USE_GPIO_FOR_CREDITS = False to use serial only
+USE_GPIO_FOR_CREDITS = False  # Set to False to disable GPIO credit adds (use serial only)
 try:
     import RPi.GPIO as GPIO
     GPIO_AVAILABLE = True
     CREDIT_GPIO_PIN = 18  # GPIO18 (Physical Pin 12) - Credit add signal to Arduino Pin 2
 except ImportError:
     GPIO_AVAILABLE = False
+    USE_GPIO_FOR_CREDITS = False
     print("⚠️  RPi.GPIO not available - credit add signal disabled")
 
 app = Flask(__name__)
@@ -432,6 +435,42 @@ def serial_reader_thread():
     print("GPIO control now handled by Arduino - no Pi GPIO needed!")
     print("Arduino will control arcade motherboard pins via Serial commands.")
     
+    # Continuous GPIO credit pin monitoring - ensure it stays HIGH
+    # CRITICAL: Always monitor, even if GPIO credit adds are disabled
+    # This prevents the pin from floating and triggering false credit adds
+    if GPIO_AVAILABLE:
+        def monitor_credit_gpio():
+            """Background task: continuously ensure credit GPIO pin stays HIGH"""
+            last_check = time.time()
+            last_warning = 0
+            while serial_running:
+                try:
+                    current_time = time.time()
+                    # Check every 50ms
+                    if current_time - last_check >= 0.05:
+                        pin_state = GPIO.input(CREDIT_GPIO_PIN)
+                        if pin_state != GPIO.HIGH:
+                            # Only warn once per second to avoid spam
+                            if current_time - last_warning >= 1.0:
+                                print(f"⚠️  GPIO credit pin went LOW! Correcting to HIGH...")
+                                last_warning = current_time
+                            GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+                            time.sleep(0.01)
+                        last_check = current_time
+                    time.sleep(0.02)  # Check every 20ms
+                except Exception as e:
+                    print(f"⚠️  Error in GPIO monitor: {e}")
+                    time.sleep(0.1)
+        
+        # Start GPIO monitor in background
+        import threading
+        gpio_monitor_thread = threading.Thread(target=monitor_credit_gpio, daemon=True)
+        gpio_monitor_thread.start()
+        if USE_GPIO_FOR_CREDITS:
+            print("✅ Started GPIO credit pin monitor (ensures pin stays HIGH, will pulse for credit adds)")
+        else:
+            print("✅ Started GPIO credit pin monitor (ensures pin stays HIGH, credit adds via serial only)")
+    
     print("Initializing serial connection...")
     try:
         ser = serial.Serial(SERIAL_PORT, BAUD, timeout=1)
@@ -624,29 +663,37 @@ def serial_reader_thread():
                     
                     # CRITICAL: Ensure GPIO credit pin stays HIGH (idle) before/after PBT pulse
                     # This prevents false credit adds from noise or pin state changes
-                    if GPIO_AVAILABLE:
+                    if GPIO_AVAILABLE and USE_GPIO_FOR_CREDITS:
                         try:
+                            # Force pin HIGH before pulse (prevents any stray LOW signals)
+                            GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+                            time.sleep(0.001)  # Brief stabilization
                             current_pin_state = GPIO.input(CREDIT_GPIO_PIN)
                             if current_pin_state != GPIO.HIGH:
-                                print(f"⚠️  GPIO credit pin was LOW ({current_pin_state})! Setting to HIGH...")
+                                print(f"⚠️  GPIO credit pin was LOW ({current_pin_state}) before pulse! Forced to HIGH...")
                                 GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
-                                time.sleep(0.01)  # Brief stabilization
+                                time.sleep(0.01)  # Longer stabilization if correction needed
                         except Exception as e:
                             print(f"⚠️  Error checking GPIO credit pin: {e}")
                     
                     # Generate arcade button press using Arduino GPIO control
                     arcade_button_press(ser, width_ms)
                     
-                    # CRITICAL: Ensure GPIO credit pin stays HIGH after PBT pulse
-                    if GPIO_AVAILABLE:
+                    # CRITICAL: Immediately after pulse, ensure GPIO credit pin is HIGH
+                    # Do this ASAP to prevent Arduino from detecting a falling edge
+                    if GPIO_AVAILABLE and USE_GPIO_FOR_CREDITS:
                         try:
+                            # Force HIGH immediately (don't check first - just set it)
+                            GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
+                            time.sleep(0.001)  # Brief stabilization
+                            # Verify it's actually HIGH
                             current_pin_state = GPIO.input(CREDIT_GPIO_PIN)
                             if current_pin_state != GPIO.HIGH:
-                                print(f"⚠️  GPIO credit pin went LOW ({current_pin_state}) after pulse! Setting to HIGH...")
+                                print(f"⚠️  GPIO credit pin went LOW ({current_pin_state}) after pulse! Forced to HIGH...")
                                 GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
-                                time.sleep(0.01)
+                                time.sleep(0.01)  # Longer stabilization if correction needed
                         except Exception as e:
-                            print(f"⚠️  Error checking GPIO credit pin after pulse: {e}")
+                            print(f"⚠️  Error setting GPIO credit pin after pulse: {e}")
                     
                     # Refractory period
                     t_ref_end = time.time() + (REFRACTORY_MS / 1000.0)
@@ -902,7 +949,7 @@ def handle_add_credits(data):
             time.sleep(0.05)  # Small delay for Arduino to process
             
             # Step 2: Add credits via hardware or serial
-            if GPIO_AVAILABLE:
+            if GPIO_AVAILABLE and USE_GPIO_FOR_CREDITS:
                 print(f"📤 Sending {add_amount} credit add pulses via GPIO {CREDIT_GPIO_PIN}")
                 # Ensure pin starts HIGH before pulsing
                 current_pin_state = GPIO.input(CREDIT_GPIO_PIN)
@@ -1019,6 +1066,8 @@ if __name__ == '__main__':
     print("=" * 60)
     
     # Initialize GPIO for credit add signal
+    # CRITICAL: Always set pin as OUTPUT and HIGH, even if not using GPIO for credit adds
+    # This prevents the pin from floating and causing false triggers
     if GPIO_AVAILABLE:
         try:
             GPIO.setmode(GPIO.BCM)
@@ -1028,6 +1077,11 @@ if __name__ == '__main__':
             pin_state = GPIO.input(CREDIT_GPIO_PIN)
             print(f"✅ GPIO {CREDIT_GPIO_PIN} initialized and set to HIGH (idle state)")
             print(f"   Pin state verified: {pin_state == GPIO.HIGH} (value: {pin_state})")
+            if USE_GPIO_FOR_CREDITS:
+                print(f"   GPIO credit adds: ENABLED (will pulse pin for credit adds)")
+            else:
+                print(f"   GPIO credit adds: DISABLED (using serial commands only)")
+                print(f"   Pin will stay HIGH to prevent false triggers")
             if pin_state != GPIO.HIGH:
                 print(f"⚠️  WARNING: GPIO pin is not HIGH! Setting to HIGH again...")
                 GPIO.output(CREDIT_GPIO_PIN, GPIO.HIGH)
@@ -1037,6 +1091,7 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"⚠️  GPIO initialization failed: {e}")
             print("   Credit add will use serial commands instead")
+            USE_GPIO_FOR_CREDITS = False
     
     # Start serial reader thread (includes GPIO pulse generation)
     start_serial_thread()
