@@ -13,9 +13,13 @@
             color: white;
             border-radius: 8px;
             padding: 20px;
-            margin: 10px 0;
+            margin: 20px 0;
             text-align: center;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 10;
+            display: block !important;
+            visibility: visible !important;
         }
         .credit-value {
             font-size: 48px;
@@ -185,6 +189,19 @@
         document.getElementById('add-credits-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') addCredits();
         });
+        
+        // Debug: Check if credit card exists on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const creditCard = document.getElementById('creditCard');
+            const creditValue = document.getElementById('credits-value');
+            console.log('🔍 Credit card check on load:');
+            console.log('  creditCard element:', creditCard ? 'FOUND' : 'NOT FOUND');
+            console.log('  creditValue element:', creditValue ? 'FOUND' : 'NOT FOUND');
+            if (creditCard) {
+                console.log('  creditCard display:', window.getComputedStyle(creditCard).display);
+                console.log('  creditCard visibility:', window.getComputedStyle(creditCard).visibility);
+            }
+        });
 
         // Credit status update handler
         socket.on('credit_status', (data) => {
@@ -195,8 +212,15 @@
             
             if (creditValueEl) {
                 creditValueEl.textContent = currentCredits;
+                console.log('✅ Updated credits display to:', currentCredits);
             } else {
                 console.error('❌ credits-value element not found!');
+            }
+            
+            if (!creditCardEl) {
+                console.error('❌ creditCard element not found!');
+            } else {
+                console.log('✅ Credit card element found and visible');
             }
             
             // Visual feedback for credit changes
