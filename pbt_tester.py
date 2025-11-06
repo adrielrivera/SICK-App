@@ -71,38 +71,47 @@ def get_score_level(pulse_width):
 
 def calculate_arcade_score_from_pulse_width(pulse_width_ms):
     """Calculate arcade score based on actual pulse width duration."""
-    # Based on your observations with better distribution:
-    # 100ms -> 140 score
-    # 80ms  -> 200 score  
-    # 60ms  -> 280 score
-    # 40ms  -> 380 score
-    # 20ms  -> 450 score
-    # 10ms  -> 500 score
+    # Direct linear mapping from ADC peak to score:
+    # 30 ADC -> 140 score (minimum)
+    # 100 ADC -> 500 score (maximum)
+    # This function is called with pulse_width, but we need to work backwards
+    # to get the ADC value, or we can directly calculate from peak in calculate_arcade_score
     
+    # For now, keep this for compatibility but it will be overridden
+    # by the direct peak-based calculation
     if pulse_width_ms >= 100:
         return 140
     elif pulse_width_ms >= 80:
-        # Linear interpolation: 100ms->140, 80ms->200
         return int(140 + (100 - pulse_width_ms) * (60 / 20))
     elif pulse_width_ms >= 60:
-        # Linear interpolation: 80ms->200, 60ms->280
         return int(200 + (80 - pulse_width_ms) * (80 / 20))
     elif pulse_width_ms >= 40:
-        # Linear interpolation: 60ms->280, 40ms->380
         return int(280 + (60 - pulse_width_ms) * (100 / 20))
     elif pulse_width_ms >= 20:
-        # Linear interpolation: 40ms->380, 20ms->450
         return int(380 + (40 - pulse_width_ms) * (70 / 20))
     elif pulse_width_ms >= 10:
-        # Linear interpolation: 20ms->450, 10ms->500
         return int(450 + (20 - pulse_width_ms) * (50 / 10))
     else:
-        return 500  # Very short pulses get max score
+        return 500
 
 def calculate_arcade_score(peak):
-    """Calculate arcade score from peak value."""
-    pulse_width = calculate_pulse_width(peak)
-    return calculate_arcade_score_from_pulse_width(pulse_width)
+    """Calculate arcade score directly from peak ADC value.
+    
+    Linear mapping:
+    - 30 ADC -> 140 score (minimum)
+    - 100 ADC -> 500 score (maximum)
+    """
+    # Clamp peak to valid range
+    peak_clamped = clamp(peak, A_MIN, A_MAX)
+    
+    # Linear mapping: 30 ADC -> 140 score, 100 ADC -> 500 score
+    # score = 140 + (peak - 30) * (500 - 140) / (100 - 30)
+    # score = 140 + (peak - 30) * 360 / 70
+    # score = 140 + (peak - 30) * 5.143
+    
+    score = 140 + (peak_clamped - 30) * (500 - 140) / (100 - 30)
+    
+    return int(score)
 
 def arcade_button_press(ser, duration_ms):
     """Send arcade button press to Arduino."""
@@ -188,7 +197,7 @@ def process_waveform_data(value):
         if current_time >= cap_end or envelope < (TRIGGER_THRESHOLD * 0.5):
             # Use updated pulse width calculation
             width_ms = calculate_pulse_width(peak)
-            arcade_score = calculate_arcade_score_from_pulse_width(width_ms)
+            arcade_score = calculate_arcade_score(peak)  # Direct calculation from peak ADC
             
             pulse_count += 1
             print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.1f}ms → {arcade_score}pts")
