@@ -430,7 +430,7 @@ def serial_reader_thread():
     Also handles GPIO pulse generation based on detected peaks.
     """
     global ser, serial_running, baseline, envelope, sample_count, credits, last_credit_deduction_time
-    global armed, peak, cap_end, pulse_count
+    global armed, peak, cap_end, pulse_count, lidar_ser
     
     print("GPIO control now handled by Arduino - no Pi GPIO needed!")
     print("Arduino will control arcade motherboard pins via Serial commands.")
@@ -643,21 +643,46 @@ def serial_reader_thread():
                                 print(f"📤 Emitted credit deduction immediately: {credits}")
                                 
                                 # Send DEDUCT_CREDIT command to LiDAR Arduino
+                                deduct_success = False
                                 try:
-                                    if lidar_ser and not lidar_ser.closed:
-                                        lidar_ser.write(b"DEDUCT_CREDIT\n")
-                                        lidar_ser.flush()
-                                        print(f"📤 Sent DEDUCT_CREDIT command to Arduino")
+                                    if lidar_ser is None:
+                                        print(f"⚠️  LiDAR Arduino serial not initialized")
+                                    elif lidar_ser.closed:
+                                        print(f"⚠️  LiDAR Arduino serial port is closed")
+                                    else:
+                                        # Check if port is writable
+                                        try:
+                                            lidar_ser.write(b"DEDUCT_CREDIT\n")
+                                            lidar_ser.flush()
+                                            print(f"📤 Sent DEDUCT_CREDIT command to Arduino")
+                                            deduct_success = True
+                                        except serial.SerialException as se:
+                                            print(f"⚠️  Serial write error (may be temporary): {se}")
+                                            # Try to reset the connection
+                                            try:
+                                                lidar_ser.close()
+                                                time.sleep(0.1)
+                                                lidar_ser = serial.Serial(LIDAR_SERIAL_PORT, LIDAR_BAUD, timeout=1)
+                                                time.sleep(0.2)
+                                                lidar_ser.reset_input_buffer()
+                                                print(f"✅ Reconnected to LiDAR Arduino, retrying...")
+                                                # Retry once
+                                                lidar_ser.write(b"DEDUCT_CREDIT\n")
+                                                lidar_ser.flush()
+                                                print(f"📤 Sent DEDUCT_CREDIT command to Arduino (after reconnect)")
+                                                deduct_success = True
+                                            except Exception as retry_e:
+                                                print(f"❌ Failed to reconnect to LiDAR Arduino: {retry_e}")
                                 except Exception as e:
                                     print(f"❌ Error sending DEDUCT_CREDIT: {e}")
-                                    # Rollback on error
-                                    credits = current_credits_before
-                                    last_credit_deduction_time = 0
-                                    # Emit rollback
-                                    socketio.emit('credit_status', {
-                                        'credits': credits,
-                                        'changed': True
-                                    })
+                                
+                                # Only rollback if we couldn't send the command after retries
+                                if not deduct_success:
+                                    print(f"⚠️  Could not send DEDUCT_CREDIT to Arduino - keeping optimistic deduction")
+                                    print(f"   Arduino will sync when it sends next CREDITS: status")
+                                    # Don't rollback - keep the optimistic deduction
+                                    # The Arduino will eventually send its credit status and sync
+                                    # This prevents double-deduction if the command actually went through
                             else:
                                 print(f"⚠️  Cannot deduct credit: credits already at 0")
                     
