@@ -48,20 +48,20 @@ def map_linear_inverse(x, x0, x1, y0, y1):
     return y1 - t * (y1 - y0)  # Inverted: subtract instead of add
 
 def calculate_pulse_width(peak):
-    """Calculate pulse width from peak value - map 30-90 ADC to 55-10ms.
+    """Calculate pulse width from peak value - map 30-80 ADC to 55-10ms.
     
     Adjusted to match arcade machine's scoring (easier to get max score):
     - 30 ADC -> 55ms pulse -> 140 points (arcade)
-    - 90 ADC -> 10ms pulse -> 500 points (arcade)
+    - 80 ADC -> 10ms pulse -> 500 points (arcade)
     """
-    a_clamped = clamp(peak, A_MIN, min(A_MAX, 90))  # Cap at 90 for easier scoring
+    a_clamped = clamp(peak, A_MIN, min(A_MAX, 80))  # Cap at 80 for easier scoring
     
-    # Map 30-90 ADC to 55-10ms pulse width to match arcade scoring
+    # Map 30-80 ADC to 55-10ms pulse width to match arcade scoring
     # 30 ADC -> 55ms (140 points on arcade)
-    # 90 ADC -> 10ms (500 points on arcade)
-    # Linear mapping: width = 55 - (peak - 30) * 45 / 60
+    # 80 ADC -> 10ms (500 points on arcade)
+    # Linear mapping: width = 55 - (peak - 30) * 45 / 50
     
-    width_ms = 55 - (a_clamped - 30) * (45 / 60)  # 30->55ms, 90->10ms
+    width_ms = 55 - (a_clamped - 30) * (45 / 50)  # 30->55ms, 80->10ms
     
     return clamp(width_ms, W_MIN_MS, W_MAX_MS)
 
@@ -104,17 +104,17 @@ def calculate_arcade_score(peak):
     
     Linear mapping (easier to get max score):
     - 30 ADC -> 140 score (minimum)
-    - 90 ADC -> 500 score (maximum)
+    - 80 ADC -> 500 score (maximum)
     """
-    # Clamp peak to valid range (cap at 90 for easier scoring)
-    peak_clamped = clamp(peak, A_MIN, min(A_MAX, 90))
+    # Clamp peak to valid range (cap at 80 for easier scoring)
+    peak_clamped = clamp(peak, A_MIN, min(A_MAX, 80))
     
-    # Linear mapping: 30 ADC -> 140 score, 90 ADC -> 500 score
-    # score = 140 + (peak - 30) * (500 - 140) / (90 - 30)
-    # score = 140 + (peak - 30) * 360 / 60
-    # score = 140 + (peak - 30) * 6.0
+    # Linear mapping: 30 ADC -> 140 score, 80 ADC -> 500 score
+    # score = 140 + (peak - 30) * (500 - 140) / (80 - 30)
+    # score = 140 + (peak - 30) * 360 / 50
+    # score = 140 + (peak - 30) * 7.2
     
-    score = 140 + (peak_clamped - 30) * (500 - 140) / (90 - 30)
+    score = 140 + (peak_clamped - 30) * (500 - 140) / (80 - 30)
     
     return int(score)
 
