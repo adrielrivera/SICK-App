@@ -119,19 +119,19 @@ def map_linear_inverse(x, x0, x1, y0, y1):
 
 
 def calculate_pulse_width(peak):
-    """Calculate pulse width from peak value - map 30-100 ADC to 55-10ms.
+    """Calculate pulse width from peak value - map 30-90 ADC to 55-10ms.
     
-    Adjusted to match arcade machine's scoring:
+    Adjusted to match arcade machine's scoring (easier to get max score):
     - 30 ADC -> 55ms pulse -> 140 points (arcade)
-    - 100 ADC -> 10ms pulse -> 500 points (arcade)
+    - 90 ADC -> 10ms pulse -> 500 points (arcade)
     """
-    a_clamped = clamp(peak, A_MIN, A_MAX)
+    a_clamped = clamp(peak, A_MIN, min(A_MAX, 90))  # Cap at 90 for easier scoring
     
-    # Map 30-100 ADC to 55-10ms pulse width to match arcade scoring
+    # Map 30-90 ADC to 55-10ms pulse width to match arcade scoring
     # 30 ADC -> 55ms (140 points on arcade)
-    # 100 ADC -> 10ms (500 points on arcade)
-    # Linear mapping: width = 55 - (peak - 30) * 45 / 70
-    width_ms = 55 - (a_clamped - 30) * (45 / 70)  # 30->55ms, 100->10ms
+    # 90 ADC -> 10ms (500 points on arcade)
+    # Linear mapping: width = 55 - (peak - 30) * 45 / 60
+    width_ms = 55 - (a_clamped - 30) * (45 / 60)  # 30->55ms, 90->10ms
     
     return clamp(width_ms, W_MIN_MS, W_MAX_MS)
 
