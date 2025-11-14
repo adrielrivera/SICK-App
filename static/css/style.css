@@ -421,3 +421,72 @@ header h2 {
     100% { opacity: 1; }
 }
 
+/* Hit Panel Styles */
+.hit-panel {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.hit-panel h3 {
+    font-size: 1.3rem;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.hit-history {
+    max-height: 300px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hit-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid var(--secondary-color);
+    transition: all 0.2s;
+}
+
+.hit-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+.hit-number {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    min-width: 60px;
+}
+
+.hit-adc {
+    font-weight: 600;
+    color: var(--accent-color);
+    font-size: 1rem;
+    flex: 1;
+    text-align: center;
+}
+
+.hit-pulse {
+    font-weight: 500;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    min-width: 80px;
+    text-align: right;
+}
+
+.no-hits {
+    text-align: center;
+    color: var(--text-light);
+    padding: 40px;
+    font-style: italic;
+}
+

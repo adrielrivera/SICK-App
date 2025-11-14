@@ -224,6 +224,47 @@ socket.on('safety_status', (data) => {
     updateSafetyBanner(gameEnabled);
 });
 
+// PBT hit event handler - display ADC value for each hit
+socket.on('pbt_hit', (data) => {
+    console.log(`PBT Hit #${data.hit_number}: ADC=${data.adc_value}, Pulse=${data.pulse_width_ms}ms`);
+    addHitToDisplay(data);
+});
+
+// Store recent hits (last 10)
+let recentHits = [];
+const MAX_HITS_DISPLAY = 10;
+
+function addHitToDisplay(hitData) {
+    recentHits.unshift(hitData);
+    if (recentHits.length > MAX_HITS_DISPLAY) {
+        recentHits.pop();
+    }
+    updateHitDisplay();
+}
+
+function updateHitDisplay() {
+    const container = document.getElementById('hit-history');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (recentHits.length === 0) {
+        container.innerHTML = '<div class="no-hits">No hits yet</div>';
+        return;
+    }
+    
+    recentHits.forEach((hit, index) => {
+        const hitElement = document.createElement('div');
+        hitElement.className = 'hit-item';
+        hitElement.innerHTML = `
+            <span class="hit-number">#${hit.hit_number}</span>
+            <span class="hit-adc">ADC: ${hit.adc_value}</span>
+            <span class="hit-pulse">${hit.pulse_width_ms}ms</span>
+        `;
+        container.appendChild(hitElement);
+    });
+}
+
 // Control buttons
 document.getElementById('pause-btn').addEventListener('click', function() {
     isPaused = !isPaused;

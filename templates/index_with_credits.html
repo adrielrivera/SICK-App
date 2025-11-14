@@ -156,6 +156,13 @@
                 </div>
             </div>
         </div>
+
+        <div class="hit-panel">
+            <h3>Recent PBT Hits</h3>
+            <div id="hit-history" class="hit-history">
+                <div class="no-hits">No hits yet</div>
+            </div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
@@ -290,16 +297,63 @@
             }
         }
 
-        // Register credit handler immediately (before connect)
-        registerCreditHandler();
+            // Register credit handler immediately (before connect)
+            registerCreditHandler();
 
-        // Initialize credit system when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initCreditSystem);
-        } else {
-            initCreditSystem();
-        }
-    </script>
+            // PBT hit event handler - display ADC value for each hit
+            function registerPbtHitHandler() {
+                if (typeof socket === 'undefined') {
+                    setTimeout(registerPbtHitHandler, 50);
+                    return;
+                }
+                
+                // Store recent hits (last 10)
+                let recentHits = [];
+                const MAX_HITS_DISPLAY = 10;
+
+                socket.on('pbt_hit', (data) => {
+                    console.log(`PBT Hit #${data.hit_number}: ADC=${data.adc_value}, Pulse=${data.pulse_width_ms}ms`);
+                    recentHits.unshift(data);
+                    if (recentHits.length > MAX_HITS_DISPLAY) {
+                        recentHits.pop();
+                    }
+                    updateHitDisplay(recentHits);
+                });
+            }
+
+            function updateHitDisplay(recentHits) {
+                const container = document.getElementById('hit-history');
+                if (!container) return;
+                
+                container.innerHTML = '';
+                
+                if (recentHits.length === 0) {
+                    container.innerHTML = '<div class="no-hits">No hits yet</div>';
+                    return;
+                }
+                
+                recentHits.forEach((hit) => {
+                    const hitElement = document.createElement('div');
+                    hitElement.className = 'hit-item';
+                    hitElement.innerHTML = `
+                        <span class="hit-number">#${hit.hit_number}</span>
+                        <span class="hit-adc">ADC: ${hit.adc_value}</span>
+                        <span class="hit-pulse">${hit.pulse_width_ms}ms</span>
+                    `;
+                    container.appendChild(hitElement);
+                });
+            }
+
+            // Register PBT hit handler
+            registerPbtHitHandler();
+
+            // Initialize credit system when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initCreditSystem);
+            } else {
+                initCreditSystem();
+            }
+        </script>
 </body>
 </html>
 

@@ -459,6 +459,14 @@ def serial_reader_thread():
                     print(f"Pulse #{pulse_count}: Peak={peak:.1f} → {width_ms:.0f} ms")
                     print(f"  Mapping: Peak {peak:.1f} → Pulse {width_ms:.0f}ms (Range: {A_MIN}-{A_MAX} → {W_MIN_MS}-{W_MAX_MS}ms)")
                     
+                    # Emit PBT hit event with ADC value to webapp
+                    socketio.emit('pbt_hit', {
+                        'hit_number': pulse_count,
+                        'adc_value': round(peak, 1),
+                        'pulse_width_ms': round(width_ms, 1),
+                        'timestamp': time.time()
+                    })
+                    
                     # Send PBT hit notification to Arduino for credit tracking
                     try:
                         ser.write(b"PBT_HIT\n")
