@@ -301,46 +301,54 @@
             registerCreditHandler();
 
             // PBT hit event handler - display ADC value for each hit
+            // Note: main.js already handles this, but we register here too in case main.js hasn't loaded yet
             function registerPbtHitHandler() {
                 if (typeof socket === 'undefined') {
                     setTimeout(registerPbtHitHandler, 50);
                     return;
                 }
                 
-                // Store recent hits (last 10)
+                // Check if handler already registered in main.js
+                if (typeof addHitToDisplay !== 'undefined') {
+                    console.log('✅ PBT hit handler already registered in main.js');
+                    return;
+                }
+                
+                // Fallback: register here if main.js didn't do it
+                console.log('⚠️ Registering PBT hit handler in credits template (main.js handler not found)');
                 let recentHits = [];
                 const MAX_HITS_DISPLAY = 10;
 
                 socket.on('pbt_hit', (data) => {
-                    console.log(`PBT Hit #${data.hit_number}: ADC=${data.adc_value}, Pulse=${data.pulse_width_ms}ms`);
+                    console.log(`🎯 PBT Hit #${data.hit_number}: ADC=${data.adc_value}, Pulse=${data.pulse_width_ms}ms`);
                     recentHits.unshift(data);
                     if (recentHits.length > MAX_HITS_DISPLAY) {
                         recentHits.pop();
                     }
-                    updateHitDisplay(recentHits);
-                });
-            }
-
-            function updateHitDisplay(recentHits) {
-                const container = document.getElementById('hit-history');
-                if (!container) return;
-                
-                container.innerHTML = '';
-                
-                if (recentHits.length === 0) {
-                    container.innerHTML = '<div class="no-hits">No hits yet</div>';
-                    return;
-                }
-                
-                recentHits.forEach((hit) => {
-                    const hitElement = document.createElement('div');
-                    hitElement.className = 'hit-item';
-                    hitElement.innerHTML = `
-                        <span class="hit-number">#${hit.hit_number}</span>
-                        <span class="hit-adc">ADC: ${hit.adc_value}</span>
-                        <span class="hit-pulse">${hit.pulse_width_ms}ms</span>
-                    `;
-                    container.appendChild(hitElement);
+                    
+                    const container = document.getElementById('hit-history');
+                    if (!container) {
+                        console.error('❌ hit-history container not found!');
+                        return;
+                    }
+                    
+                    container.innerHTML = '';
+                    
+                    if (recentHits.length === 0) {
+                        container.innerHTML = '<div class="no-hits">No hits yet</div>';
+                        return;
+                    }
+                    
+                    recentHits.forEach((hit) => {
+                        const hitElement = document.createElement('div');
+                        hitElement.className = 'hit-item';
+                        hitElement.innerHTML = `
+                            <span class="hit-number">#${hit.hit_number}</span>
+                            <span class="hit-adc">ADC: ${hit.adc_value}</span>
+                            <span class="hit-pulse">${hit.pulse_width_ms}ms</span>
+                        `;
+                        container.appendChild(hitElement);
+                    });
                 });
             }
 

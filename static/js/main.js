@@ -224,17 +224,18 @@ socket.on('safety_status', (data) => {
     updateSafetyBanner(gameEnabled);
 });
 
-// PBT hit event handler - display ADC value for each hit
-socket.on('pbt_hit', (data) => {
-    console.log(`PBT Hit #${data.hit_number}: ADC=${data.adc_value}, Pulse=${data.pulse_width_ms}ms`);
-    addHitToDisplay(data);
-});
-
-// Store recent hits (last 10)
+// Store recent hits (last 10) - global scope
 let recentHits = [];
 const MAX_HITS_DISPLAY = 10;
 
+// PBT hit event handler - register immediately (socket.io handles connection state)
+socket.on('pbt_hit', (data) => {
+    console.log(`🎯 PBT Hit received: #${data.hit_number}, ADC=${data.adc_value}, Pulse=${data.pulse_width_ms}ms`);
+    addHitToDisplay(data);
+});
+
 function addHitToDisplay(hitData) {
+    console.log('📝 Adding hit to display:', hitData);
     recentHits.unshift(hitData);
     if (recentHits.length > MAX_HITS_DISPLAY) {
         recentHits.pop();
@@ -244,15 +245,23 @@ function addHitToDisplay(hitData) {
 
 function updateHitDisplay() {
     const container = document.getElementById('hit-history');
-    if (!container) return;
+    console.log('🔄 Updating hit display, container:', container ? 'found' : 'NOT FOUND');
+    console.log('   Recent hits count:', recentHits.length);
+    
+    if (!container) {
+        console.error('❌ hit-history container not found!');
+        return;
+    }
     
     container.innerHTML = '';
     
     if (recentHits.length === 0) {
         container.innerHTML = '<div class="no-hits">No hits yet</div>';
+        console.log('   Displaying: No hits yet');
         return;
     }
     
+    console.log('   Displaying', recentHits.length, 'hits');
     recentHits.forEach((hit, index) => {
         const hitElement = document.createElement('div');
         hitElement.className = 'hit-item';
@@ -263,6 +272,26 @@ function updateHitDisplay() {
         `;
         container.appendChild(hitElement);
     });
+}
+
+// Initialize hit display on page load
+function initHitDisplay() {
+    console.log('📋 Initializing hit display');
+    const container = document.getElementById('hit-history');
+    if (container) {
+        console.log('✅ hit-history container found, initializing display');
+        updateHitDisplay();
+    } else {
+        console.warn('⚠️ hit-history container not found yet, will retry');
+        setTimeout(initHitDisplay, 100);
+    }
+}
+
+// Try to initialize immediately if DOM is ready, otherwise wait
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHitDisplay);
+} else {
+    initHitDisplay();
 }
 
 // Control buttons
