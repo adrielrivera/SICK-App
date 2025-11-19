@@ -1,7 +1,0 @@
-Pulse #2: Peak=53.5 → 30 ms
-  Mapping: Peak 53.5 → Pulse 30ms (Range: 30-100 → 10-100ms)
-🎯 PBT Hit #2: hit_count=2/2
-💸 Deducting credit: 7 → 6 (optimistic)
-   Set cooldown until: 1762389886.25s
-📤 Emitted credit deduction immediately: 6
-❌ Error sending DEDUCT_CREDIT: write failed: [Errno 5] Input/output error
